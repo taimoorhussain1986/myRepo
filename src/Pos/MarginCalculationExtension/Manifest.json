@@ -46,7 +46,6 @@
           },
           "appBarCommands": [
             {
-              "id": "Contoso_MarginCalculationButton",
               "description": "Margin Calculation",
               "name": "Margin",
               "modulePath": "Operations/MarginCalculationOperation"
