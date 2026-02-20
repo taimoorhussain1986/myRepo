@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Target framework: align with your Commerce Runtime host.
+      D365 10.0.20–10.0.35 uses net472; newer CSU (cloud scale unit) hosts
+      may target net6.0 or net8.0 – verify against your Commerce SDK version
+      and update TargetFramework accordingly.
+    -->
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Contoso.Commerce.Runtime.MarginCalculation</AssemblyName>
+    <RootNamespace>Contoso.Commerce.Runtime.MarginCalculation</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <!-- Ensure deterministic builds -->
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      These packages are distributed via the Commerce SDK NuGet feed.
+      Add the following feed to your nuget.config:
+        https://pkgs.dev.azure.com/commerce-sdk/.../_packaging/sdk/nuget/v3/index.json
+      Version: align with your D365 F&O / Commerce Runtime version (e.g. 10.0.x).
+    -->
+    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.Framework"     Version="$(CommerceSDKVersion)" />
+    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.Messages"      Version="$(CommerceSDKVersion)" />
+    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.RealtimeServices.Messages" Version="$(CommerceSDKVersion)" />
+  </ItemGroup>
+
+</Project>

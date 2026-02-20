@@ -1,0 +1,71 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/runner/work/myRepo/myRepo/src/CommerceRuntime/Contoso.Commerce.Runtime.MarginCalculation/Contoso.Commerce.Runtime.MarginCalculation.csproj": {}
+  },
+  "projects": {
+    "/home/runner/work/myRepo/myRepo/src/CommerceRuntime/Contoso.Commerce.Runtime.MarginCalculation/Contoso.Commerce.Runtime.MarginCalculation.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/runner/work/myRepo/myRepo/src/CommerceRuntime/Contoso.Commerce.Runtime.MarginCalculation/Contoso.Commerce.Runtime.MarginCalculation.csproj",
+        "projectName": "Contoso.Commerce.Runtime.MarginCalculation",
+        "projectPath": "/home/runner/work/myRepo/myRepo/src/CommerceRuntime/Contoso.Commerce.Runtime.MarginCalculation/Contoso.Commerce.Runtime.MarginCalculation.csproj",
+        "packagesPath": "/home/runner/work/myRepo/.codeql-scratch/dbs/csharp/working/packages",
+        "outputPath": "/home/runner/work/myRepo/myRepo/src/CommerceRuntime/Contoso.Commerce.Runtime.MarginCalculation/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/runner/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net472"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net472": {
+            "targetAlias": "net472",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "10.0.100"
+      },
+      "frameworks": {
+        "net472": {
+          "targetAlias": "net472",
+          "dependencies": {
+            "Microsoft.Dynamics.Commerce.Runtime.Framework": {
+              "target": "Package",
+              "version": "(, )"
+            },
+            "Microsoft.Dynamics.Commerce.Runtime.Messages": {
+              "target": "Package",
+              "version": "(, )"
+            },
+            "Microsoft.Dynamics.Commerce.Runtime.RealtimeServices.Messages": {
+              "target": "Package",
+              "version": "(, )"
+            },
+            "Microsoft.NETFramework.ReferenceAssemblies": {
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[1.0.3, )",
+              "autoReferenced": true
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.102/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,69 @@
+/// <summary>
+/// Extension class for RetailTransactionServiceEx that exposes a real-time
+/// service method to return the purchase price of an item from InventTableModule
+/// (ModuleType = Purch).
+///
+/// Deployment steps:
+///   1. Add this class to a new or existing D365 F&O extension model.
+///   2. Build and synchronise the model.
+///   3. The method becomes available to the CRT via IRealtimeService.
+///
+/// The method is called from CRT MarginCalculationService.cs using:
+///   InvokeExtensionMethodRealtimeRequest("ContosoGetItemPurchasePrice", itemId, dataAreaId)
+/// </summary>
+[ExtensionOf(classStr(RetailTransactionServiceEx))]
+final class ContosoRetailTransactionServiceExt_Extension
+{
+    /// <summary>
+    /// Returns the purchase price for the given item from InventTableModule.
+    ///
+    /// Return container layout (0-based index):
+    ///   [0]  boolean  – true on success, false on error
+    ///   [1]  str      – error message (empty on success)
+    ///   [2]  real     – purchase price (InventTableModule.Price)
+    /// </summary>
+    /// <param name="_itemId">
+    ///   The item identifier to look up in InventTableModule.
+    /// </param>
+    /// <param name="_dataAreaId">
+    ///   The legal entity (company) in which to look up the price,
+    ///   e.g. "USMF". Pass the sales order's dataAreaId from the POS.
+    /// </param>
+    /// <returns>
+    ///   A <c>container</c> formatted as described above.
+    /// </returns>
+    [SysEntryPointAttribute(true)]
+    public static container ContosoGetItemPurchasePrice(str _itemId, str _dataAreaId)
+    {
+        InventTableModule  inventTableModule;
+        real               purchasePrice = 0.0;
+
+        try
+        {
+            if (!_itemId || !_dataAreaId)
+            {
+                return [false, "ItemId and DataAreaId are required.", 0.0];
+            }
+
+            // Select the purchase price for the item in the given company.
+            // InventTableModule.ModuleType == ModuleInventPurchSales::Purch selects
+            // the "Purchase order" price tier.
+            changecompany(_dataAreaId)
+            {
+                select firstonly Price from inventTableModule
+                    where inventTableModule.ItemId     == _itemId
+                       && inventTableModule.ModuleType == ModuleInventPurchSales::Purch;
+            }
+
+            purchasePrice = inventTableModule.Price;
+
+            return [true, "", purchasePrice];
+        }
+        catch (Exception::Error)
+        {
+            str errorMsg = infolog.text();
+            return [false, errorMsg, 0.0];
+        }
+    }
+
+}

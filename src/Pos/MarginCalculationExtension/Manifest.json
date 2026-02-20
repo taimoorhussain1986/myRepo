@@ -1,0 +1,56 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/core-build/package-manifest/2021-04/package-manifest.schema.json",
+  "name": "MarginCalculationExtension",
+  "description": "Adds a Margin Calculation button to the sales order transaction screen. When a line is selected the extension calls the CRT real-time service (D365 F&O) to retrieve the purchase price and displays a margin breakdown.",
+  "publisher": "Contoso",
+  "version": "1.0.0",
+
+  "minimumPosVersion": "9.30",
+
+  "components": {
+
+    "resources": {
+      "supportedUICultures": ["en-US"]
+    },
+
+    "extend": {
+
+      "views": {
+        "CartView": {
+          "controlsConfig": {
+            "customControls": [],
+            "cartLineCustomColumns": []
+          },
+          "toolbarConfig": {
+            "customToolbarItems": [
+              {
+                "id": "Contoso_MarginCalculationButton",
+                "label": "Margin",
+                "iconClass": "icon-CalculatorAddition",
+                "visibilityMode": "Always",
+                "operationId": 50001
+              }
+            ]
+          }
+        }
+      },
+
+      "operations": [
+        {
+          "operationId": 50001,
+          "operationRequestHandlerPath": "Operations/MarginCalculationOperation"
+        }
+      ]
+    },
+
+    "create": {
+      "views": [
+        {
+          "viewName": "MarginCalculationView",
+          "viewPath": "Views/MarginCalculationView"
+        }
+      ]
+    }
+
+  }
+}
