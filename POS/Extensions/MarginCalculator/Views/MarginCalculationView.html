@@ -1,0 +1,64 @@
+<!--
+    MarginCalculationView.html
+    Custom POS view template for displaying margin calculation results.
+    Bound to MarginCalculationView.ts via Knockout.js data-bind attributes.
+-->
+<div class="marginCalculatorView">
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <div class="viewHeader">
+        <h2 class="viewTitle" data-bind="text: title"></h2>
+    </div>
+
+    <!-- ── Content ───────────────────────────────────────────────── -->
+    <div class="viewContent">
+
+        <!-- Item information -->
+        <div class="infoSection">
+            <div class="infoRow">
+                <span class="label">Item ID</span>
+                <span class="value" data-bind="text: itemId"></span>
+            </div>
+            <div class="infoRow">
+                <span class="label">Description</span>
+                <span class="value" data-bind="text: lineDescription"></span>
+            </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Price breakdown -->
+        <div class="priceSection">
+            <div class="infoRow">
+                <span class="label">Purchase Price (Cost)</span>
+                <span class="value" data-bind="text: purchasePrice"></span>
+            </div>
+            <div class="infoRow">
+                <span class="label">Net Amount (Revenue)</span>
+                <span class="value" data-bind="text: netAmount"></span>
+            </div>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- Margin results -->
+        <div class="marginSection">
+            <div class="infoRow">
+                <span class="label">Margin Amount</span>
+                <span class="value" data-bind="text: marginAmount"></span>
+            </div>
+            <div class="infoRow">
+                <span class="label">Margin %</span>
+                <span class="value marginHighlight" data-bind="text: marginPercentage, css: marginCssClass"></span>
+            </div>
+        </div>
+
+        <div class="formulaNote">
+            Formula: Margin % = ((Net Amount − Purchase Price) ÷ Net Amount) × 100
+        </div>
+    </div>
+
+    <!-- ── Footer / Actions ──────────────────────────────────────── -->
+    <div class="viewFooter">
+        <button class="closeButton" data-bind="click: closeView">Close</button>
+    </div>
+</div>
