@@ -1,25 +1,51 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/core-build/package-manifest/2021-04/package-manifest.schema.json",
-  "name": "MarginCalculationExtension",
-  "description": "Adds a Margin Calculation button to the sales order transaction screen. When a line is selected the extension calls the CRT real-time service (D365 F&O) to retrieve the purchase price and displays a margin breakdown.",
-  "publisher": "Contoso",
-  "version": "1.0.0",
-
-  "minimumPosVersion": "9.30",
-
+  "$schema": "./devDependencies/schemas/manifestSchema.json",
+  "name": "Beaumont.Commerce",
+  "publisher": "Sonata",
+  "version": "7.2.0",
+  "minimumPosVersion": "7.2.1746.0",
+  "dependencies": [
+    {
+      "alias": "knockout",
+      "format": "amd",
+      "modulePath": "Libraries/knockout"
+    }
+  ],
   "components": {
-
     "resources": {
       "supportedUICultures": ["en-US"]
     },
-
     "extend": {
-
       "views": {
+        "InventoryLookupView": {
+          "inventoryByStoreListConfiguration": {
+            "description": "Inventory Loop Up",
+            "name": "Inventory Look Up",
+            "modulePath": "ViewExtensions/InventoryLookup/CustomInventoryByStoreListColumns"
+          },
+          "appBarCommands": [
+            {
+              "modulePath": "ViewExtensions/InventoryLookup/BatchViewCommand",
+              "description": "Batch",
+              "name": "Batch"
+            }
+          ]
+        },
         "CartView": {
-          "controlsConfig": {
-            "customControls": [],
-            "cartLineCustomColumns": []
+          "totalsPanel": {
+            "customFields": [
+              {
+                "name": "Outstanding",
+                "description": "Outstanding field",
+                "fieldName": "Outstanding",
+                "modulePath": "ColumnExtensions/TotalPanel/OutstandingField"
+              }
+            ]
+          },
+          "viewController": {
+            "modulePath": "ViewExtensions/Cart/CartViewController",
+            "description": "Cart Controller",
+            "name": "cart controller"
           },
           "toolbarConfig": {
             "customToolbarItems": [
@@ -32,9 +58,86 @@
               }
             ]
           }
+        },
+        "ShowJournalView": {
+          "appBarCommands": [
+            {
+              "description": "ShowJournalPrint",
+              "name": "ShowJournalPrint",
+              "modulePath": "ViewExtensions/ShowJournal/DownloadDocumentCommand"
+            }
+          ]
+        },
+        "FulfillmentLineView": {
+          "fulfillmentLinesListConfiguration": {
+            "modulePath": "ViewExtensions/FulfillmentLines/FulfillmentLinesListColumn"
+          }
         }
       },
-
+      "triggers": [
+        {
+          "description": "Bind knockout js",
+          "name": "KnockoutBinding",
+          "triggerType": "ApplicationStart",
+          "modulePath": "TriggerHandlers/ApplicationStartTrigger"
+        },
+        {
+          "description": "PreProductSale",
+          "name": "PreProductSale",
+          "triggerType": "PreProductSale",
+          "modulePath": "FDD002_UOM/Trigger/BT_PreProductTrigger"
+        },
+        {
+          "description": "PreSetQuantity",
+          "name": "PreSetQuantity",
+          "triggerType": "PreSetQuantity",
+          "modulePath": "FDD002_UOM/Trigger/BT_PreSetQuantityTrigger"
+        },
+        {
+          "description": "PostLogon",
+          "name": "PostLogon",
+          "triggerType": "PostLogon",
+          "modulePath": "TriggerHandlers/PostLogonTrigger"
+        },
+        {
+          "description": "PostOperation",
+          "name": "Post Operation",
+          "triggerType": "PostOperation",
+          "modulePath": "TriggerHandlers/PostOperationTrigger"
+        },
+        {
+          "description": "PreOperation",
+          "name": "Pre Operation",
+          "triggerType": "PreOperation",
+          "modulePath": "TriggerHandlers/PreOperationTrigger"
+        },
+        {
+          "name": "PreEndTransactionTrigger",
+          "description": "PreEndTransactionTrigger",
+          "modulePath": "TriggerHandlers/PreEndTransactionTrigger",
+          "triggerType": "PreEndTransaction"
+        },
+        {
+          "name": "PostEndTransactionTrigger",
+          "description": "PostEndTransactionTrigger",
+          "modulePath": "TriggerHandlers/PostEndTransactionTrigger",
+          "triggerType": "PostEndTransaction"
+        },
+        {
+          "name": "PostShipFulfillmentLinesTrigger",
+          "description": "PostShipFulfillmentLinesTrigger",
+          "modulePath": "TriggerHandlers/PostShipFulfillmentLinesTrigger",
+          "triggerType": "PostShipFulfillmentLines"
+        }
+      ],
+      "requestHandlers": [
+        {
+          "modulePath": "Handlers/GetPickupDateClientRequestHandlerExt"
+        },
+        {
+          "modulePath": "Handlers/GetShippingDateClientRequestHandlerExt"
+        }
+      ],
       "operations": [
         {
           "operationId": 50001,
@@ -42,15 +145,45 @@
         }
       ]
     },
-
     "create": {
       "views": [
         {
-          "viewName": "MarginCalculationView",
-          "viewPath": "Views/MarginCalculationView"
+          "description": "Batch View",
+          "name": "Batch View",
+          "title": "BatchView",
+          "pageName": "BatchView",
+          "phonePageName": "BatchView",
+          "viewDirectory": "Views/",
+          "viewControllerPath": "Views/BatchView"
+        },
+        {
+          "description": "ReceiptView",
+          "name": "ReceiptView",
+          "pageName": "ReceiptView",
+          "viewControllerPath": "Views/ReceiptView",
+          "viewDirectory": "Views/",
+          "phonePageName": "ReceiptView",
+          "title": "ReceiptView"
+        },
+        {
+          "description": "UOMView",
+          "name": "UOMView",
+          "title": "Pack Conversion",
+          "pageName": "BT_UOMConversionView",
+          "phonePageName": "BT_UOMConversionView",
+          "viewDirectory": "FDD002_UOM/Views/",
+          "viewControllerPath": "FDD002_UOM/Views/BT_UOMConversionView"
+        },
+        {
+          "description": "Margin Calculation View",
+          "name": "MarginCalculationView",
+          "title": "Margin Calculation",
+          "pageName": "MarginCalculationView",
+          "phonePageName": "MarginCalculationView",
+          "viewDirectory": "Views/",
+          "viewControllerPath": "Views/MarginCalculationView"
         }
       ]
     }
-
   }
 }
