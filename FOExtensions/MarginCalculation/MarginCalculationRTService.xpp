@@ -1,0 +1,72 @@
+/// <summary>
+/// ContosoRetailTransactionServiceEx
+///
+/// D365 F&O Real-Time Service extension class that exposes a method to retrieve
+/// the purchase price (inventTableModule.Price) for a given item number.
+///
+/// Deployment:
+///   1. Add this file to your D365 F&O extension model (e.g., ContosoCommerce model).
+///   2. Build the model in Visual Studio (Dynamics 365 > Build Solution).
+///   3. The [RealtimeTransactionServiceAttribute] decorator automatically registers
+///      the method so it can be called from CRT via InvokeExtensionMethodRealtimeRequest.
+///
+/// Called by:
+///   CommerceRuntime/MarginCalculation/Handlers/MarginCalculationHandler.cs
+///   using RTS method name "ContosoGetItemPurchasePrice".
+/// </summary>
+[RealtimeTransactionServiceAttribute('Contoso Margin Calculation Services', false)]
+public class ContosoRetailTransactionServiceEx
+{
+    /// <summary>
+    /// Returns the purchase price from inventTableModule for the specified item.
+    ///
+    /// The purchase price (inventTableModule.Price where ModuleType == PurchSales::Purch)
+    /// is used as the cost component in the margin formula:
+    ///
+    ///   Margin % = ((NetAmount - PurchasePrice) / NetAmount) * 100
+    ///
+    /// </summary>
+    /// <param name="_itemId">Item number (e.g., "A0001").</param>
+    /// <param name="_purchasePrice">Output: purchase price from inventTableModule.Price.</param>
+    /// <param name="_errorMessage">Output: error message if lookup fails, empty string on success.</param>
+    [RealtimeTransactionServiceAttribute('ContosoGetItemPurchasePrice')]
+    public static void getItemPurchasePrice(
+        str     _itemId,
+        real    _purchasePrice,
+        str     _errorMessage)
+    {
+        InventTableModule  inventTableModule;
+        boolean            found = false;
+
+        _purchasePrice  = 0;
+        _errorMessage   = '';
+
+        try
+        {
+            // Select the purchase price row from inventTableModule.
+            // ModuleType ModuleInventPurchSales::Purch = purchase module
+            select firstonly Price
+                from inventTableModule
+                    where inventTableModule.ItemId     == _itemId
+                       && inventTableModule.ModuleType == ModuleInventPurchSales::Purch;
+
+            if (inventTableModule.RecId)
+            {
+                _purchasePrice = inventTableModule.Price;
+                found = true;
+            }
+
+            if (!found)
+            {
+                _errorMessage = strFmt("No purchase price found in inventTableModule for item '%1'.", _itemId);
+            }
+        }
+        catch (Exception::Error)
+        {
+            _errorMessage = strFmt(
+                "Error retrieving purchase price for item '%1': %2",
+                _itemId,
+                infolog.text());
+        }
+    }
+}

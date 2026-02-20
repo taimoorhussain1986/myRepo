@@ -1,0 +1,17 @@
+# Build artifacts
+**/obj/
+**/bin/
+**/*.user
+
+# NuGet
+**/packages/
+**/*.nupkg
+
+# Node / POS build output
+**/node_modules/
+**/dist/
+
+# IDE
+.vs/
+*.suo
+*.swp

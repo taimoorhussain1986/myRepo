@@ -1,0 +1,26 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/dynamics365/commerce/pos/2022-04/extension-manifest.schema.json",
+  "name": "MarginCalculatorExtension",
+  "publisher": "Contoso",
+  "version": "1.0.0",
+  "minimumPosVersion": "9.28.0.0",
+  "description": "Adds a Margin Calculation button to the transaction screen. When a sales line is selected and the button is clicked, it calls a CRT real-time service to retrieve the purchase price from D365 F&O and displays the calculated margin.",
+  "components": {
+    "create": {
+      "operations": [
+        {
+          "operationName": "MarginCalculation",
+          "operationId": "5001",
+          "operationRequestFactoryPath": "Operations/MarginCalculationOperationRequestFactory",
+          "operationRequestHandlerPath": "Handlers/MarginCalculationOperationRequestHandler"
+        }
+      ],
+      "views": [
+        {
+          "name": "MarginCalculationView",
+          "path": "Views/MarginCalculationView"
+        }
+      ]
+    }
+  }
+}

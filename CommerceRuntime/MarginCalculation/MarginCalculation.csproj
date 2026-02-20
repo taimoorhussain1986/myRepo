@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      Target .NET Standard 2.0 to be compatible with the Store Commerce CRT
+      extension hosting model (both on-premises and cloud scale units).
+    -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <AssemblyName>Contoso.Commerce.Runtime.MarginCalculation</AssemblyName>
+    <RootNamespace>Contoso.Commerce.Runtime.MarginCalculation</RootNamespace>
+    <Authors>Contoso</Authors>
+    <Description>CRT extension that calculates the gross margin for a sales order line by calling the D365 F&amp;O Real-Time Service to retrieve inventTableModule.Price.</Description>
+    <Version>1.0.0</Version>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Reference the CRT SDK NuGet packages.
+      Update versions to match your Store Commerce / CSU version.
+      These packages are available from the Microsoft.Dynamics.Commerce.Sdk feed.
+    -->
+    <PackageReference Include="Microsoft.Dynamics.Commerce.Sdk.Runtime" Version="9.46.*" />
+  </ItemGroup>
+
+</Project>
