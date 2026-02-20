@@ -43,14 +43,7 @@
             "modulePath": "ViewExtensions/Cart/CartViewController",
             "description": "Cart Controller",
             "name": "cart controller"
-          },
-          "appBarCommands": [
-            {
-              "description": "Margin Calculation",
-              "name": "Margin",
-              "modulePath": "Operations/MarginCalculationOperation"
-            }
-          ]
+          }
         },
         "ShowJournalView": {
           "appBarCommands": [
