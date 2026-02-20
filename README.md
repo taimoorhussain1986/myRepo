@@ -227,6 +227,33 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
 
 #### 4c – Step-by-step: add the Margin button to the Discount section
 
+> **Why "Custom operation" doesn't appear in the action list**
+>
+> In Retail SDK 7.2.x, the Button Layout Designer action dropdown is populated from the
+> **POS operations** table in HQ. The action type is called **"Operation"** (not "Custom operation").
+> Before it can be selected, your custom operation **must be registered** in that table first.
+> Complete Step 0 below before opening the Button Layout Designer.
+
+---
+
+**Step 0 – Register operation 50001 in POS Operations (required prerequisite)**
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → POS operations**
+2. Click **New** to create a new record.
+3. Fill in the fields:
+   | Field | Value |
+   |---|---|
+   | **Operation ID** | `50001` |
+   | **Operation name** | `Margin Calculation` |
+   | **Enable for checking** | *(tick if managers should be able to check it)* |
+   | **Enable always** | Tick this box so the operation is available in all contexts |
+   | **Check user access** | Leave default |
+4. Click **Save**.
+
+> Once saved, operation `50001 – Margin Calculation` will appear in the Button Layout Designer's operation picker.
+
+---
+
 **Step 1 – Open the Screen Layout Designer to find the Discount button grid**
 
 1. Go to **Retail and Commerce → Channel setup → POS setup → Screen layouts**
@@ -238,6 +265,8 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
 6. Click anywhere on that panel. Its properties appear — **note the Button Grid ID** shown (e.g. `F1M1DISC` or similar).
 7. Close the designer. You now have the Button Grid ID.
 
+---
+
 **Step 2 – Open that Button Grid and add the Margin button**
 
 1. Go to **Retail and Commerce → Channel setup → POS setup → Button grids**
@@ -245,16 +274,18 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
 3. Click **Button layout designer** (in the Action Pane).
 4. The button grid editor opens showing the existing buttons in a grid.
 5. Click on an **empty cell** in the grid where you want the Margin button to appear.
-6. In the button properties panel on the right, fill in:
+6. In the button properties panel, fill in:
    | Field | Value |
    |---|---|
    | **Text on button** | `Margin` |
-   | **Action** | `Custom operation` |
-   | **Operation number** | `50001` |
+   | **Action** | Select **`Operation`** from the dropdown *(this is the correct name in 7.2.x — NOT "Custom operation")* |
+   | **Operation** | After selecting "Operation", a second picker appears — search for `50001` or `Margin Calculation` and select it |
    | **Font size** | *(leave as default or match surrounding buttons)* |
    | **Button color** | *(optional — choose any)* |
 7. Click **OK** / **Save** on the button properties.
 8. Click **Save** (or **Close and save**) on the Button layout designer.
+
+---
 
 **Step 3 – Push the change to your stores**
 
@@ -262,6 +293,8 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
 2. Run job **1090 – Registers**.
    > This pushes the updated button grid to all stores/registers that use this layout.
 3. Once the job completes, **restart Store Commerce** (or perform a manual database sync from the POS Settings screen).
+
+---
 
 **Step 4 – Verify in Store Commerce**
 
