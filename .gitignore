@@ -1,0 +1,12 @@
+# .NET build outputs
+**/obj/
+**/bin/
+
+# Node / POS build outputs
+**/node_modules/
+**/dist/
+
+# Misc
+*.user
+*.suo
+.vs/
