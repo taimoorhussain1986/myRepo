@@ -12,9 +12,6 @@
     }
   ],
   "components": {
-    "resources": {
-      "supportedUICultures": ["en-US"]
-    },
     "extend": {
       "views": {
         "InventoryLookupView": {
@@ -47,17 +44,14 @@
             "description": "Cart Controller",
             "name": "cart controller"
           },
-          "toolbarConfig": {
-            "customToolbarItems": [
-              {
-                "id": "Contoso_MarginCalculationButton",
-                "label": "Margin",
-                "iconClass": "icon-CalculatorAddition",
-                "visibilityMode": "Always",
-                "operationId": 50001
-              }
-            ]
-          }
+          "appBarCommands": [
+            {
+              "id": "Contoso_MarginCalculationButton",
+              "description": "Margin Calculation",
+              "name": "Margin",
+              "modulePath": "Operations/MarginCalculationOperation"
+            }
+          ]
         },
         "ShowJournalView": {
           "appBarCommands": [
@@ -136,12 +130,9 @@
         },
         {
           "modulePath": "Handlers/GetShippingDateClientRequestHandlerExt"
-        }
-      ],
-      "operations": [
+        },
         {
-          "operationId": 50001,
-          "operationRequestHandlerPath": "Operations/MarginCalculationOperation"
+          "modulePath": "Operations/MarginCalculationOperation"
         }
       ]
     },
