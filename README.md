@@ -212,24 +212,68 @@ Some stores assign different layouts per register (e.g. a cashier register vs a 
 
 ---
 
-#### 4b – Add the Margin button to the identified layout
+#### 4b – Which designer to use: "Designer" vs "Button layout designer"
 
-1. In D365 HQ navigate to:
-   **Retail and Commerce → Channel setup → POS setup → Screen layouts**
-2. Open the layout you identified in step 4a.
-3. Click **Designer** to open the Screen layout designer (requires the MPOS Designer to be installed).
-4. In the Transaction screen, locate the **button grid** on the sales lines panel (or the toolbar area where you want the button).
-5. Add a new button with:
-   | Setting | Value |
+When you open your Screen Layout in HQ you see **two designer buttons** in the Action Pane. Here is what each one does and when to use it:
+
+| Button | What it opens | Use it when… |
+|---|---|---|
+| **Designer** | The **Screen Layout Designer** — a visual canvas showing the full POS screen: panels, columns, and which button grid sits in each panel. | You want to **see** the overall layout structure and **find the Button Grid ID** assigned to a panel (e.g. the Discount section). |
+| **Button layout designer** | A grid editor that lets you directly add/edit/remove **buttons inside a specific button grid**. | You already know the Button Grid you want to edit and want to **add a button** to it. |
+
+**To add the Margin button to the Discount section, use the Button layout designer — but first use Designer to find the right grid ID.** Follow the steps below.
+
+---
+
+#### 4c – Step-by-step: add the Margin button to the Discount section
+
+**Step 1 – Open the Screen Layout Designer to find the Discount button grid**
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → Screen layouts**
+2. Click on your layout to open it.
+3. Click **Designer** (in the Action Pane at the top).
+   > If prompted, click **Open** / **Allow** for the ClickOnce designer app.
+4. The designer opens and shows the full POS transaction screen with its panels.
+5. Look for the panel that contains the **Discount** buttons (usually labelled *"Discount"* or containing buttons like *"Line discount %"*, *"Total discount %"*, etc.).
+6. Click anywhere on that panel. Its properties appear — **note the Button Grid ID** shown (e.g. `F1M1DISC` or similar).
+7. Close the designer. You now have the Button Grid ID.
+
+**Step 2 – Open that Button Grid and add the Margin button**
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → Button grids**
+2. Find the Button Grid ID you noted above and open it.
+3. Click **Button layout designer** (in the Action Pane).
+4. The button grid editor opens showing the existing buttons in a grid.
+5. Click on an **empty cell** in the grid where you want the Margin button to appear.
+6. In the button properties panel on the right, fill in:
+   | Field | Value |
    |---|---|
-   | Button text | Margin |
-   | Action | **Custom operation** |
-   | Operation ID | `50001` |
-   | Button image / colour | *(optional — choose any)* |
-6. **Save** the layout.
-7. Run **Distribution schedule → 1090 (Registers)** to push the updated layout to your stores.
+   | **Text on button** | `Margin` |
+   | **Action** | `Custom operation` |
+   | **Operation number** | `50001` |
+   | **Font size** | *(leave as default or match surrounding buttons)* |
+   | **Button color** | *(optional — choose any)* |
+7. Click **OK** / **Save** on the button properties.
+8. Click **Save** (or **Close and save**) on the Button layout designer.
 
-> **Tip:** If multiple stores use different layouts, repeat step 4b for each layout that needs the Margin button.
+**Step 3 – Push the change to your stores**
+
+1. Back in HQ, go to **Retail and Commerce → Retail and Commerce IT → Distribution schedule**
+2. Run job **1090 – Registers**.
+   > This pushes the updated button grid to all stores/registers that use this layout.
+3. Once the job completes, **restart Store Commerce** (or perform a manual database sync from the POS Settings screen).
+
+**Step 4 – Verify in Store Commerce**
+
+1. Sign in to Store Commerce.
+2. Open a transaction and add a product.
+3. Select a sales line.
+4. Navigate to the **Discount** panel — you should see the new **Margin** button.
+5. Click it → the Margin Calculation view opens with the line's margin figures.
+
+---
+
+> **Tip:** If multiple stores use different layouts (or different button grids for the discount panel), repeat Steps 2–3 for each button grid that needs the Margin button.
 
 ---
 
