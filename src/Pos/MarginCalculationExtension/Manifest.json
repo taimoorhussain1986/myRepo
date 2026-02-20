@@ -126,12 +126,18 @@
       ],
       "requestHandlers": [
         {
+          "name": "GetPickupDateClientRequestHandlerExt",
+          "description": "GetPickupDateClientRequestHandlerExt",
           "modulePath": "Handlers/GetPickupDateClientRequestHandlerExt"
         },
         {
+          "name": "GetShippingDateClientRequestHandlerExt",
+          "description": "GetShippingDateClientRequestHandlerExt",
           "modulePath": "Handlers/GetShippingDateClientRequestHandlerExt"
         },
         {
+          "name": "MarginCalculationOperation",
+          "description": "MarginCalculationOperation",
           "modulePath": "Operations/MarginCalculationOperation"
         }
       ]
