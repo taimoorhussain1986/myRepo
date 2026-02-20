@@ -174,24 +174,62 @@ Create a `StoreCommerce.Extension.MarginCalculation` extension package:
 
 ---
 
-### Step 4 – Configure the Button Grid in D365 HQ (Back Office)
+### Step 4 – Find the correct Screen Layout, then add the Margin button
 
-1. In D365 F&O HQ navigate to:
+#### 4a – How to find which Screen Layout your store uses
+
+There are typically many screen layouts in D365 HQ. Use **one of the three methods below** to find the exact layout assigned to your store and registers.
+
+---
+
+**Method 1 – Look it up via the Store (fastest)**
+
+1. Go to **Retail and Commerce → Channels → Stores**
+2. Open your store (e.g. *"Houston"* or whichever store you deploy to).
+3. On the **General** FastTab, note the value in the **Screen layout** field.  
+   That is the layout ID you need to open in Step 4b.
+
+---
+
+**Method 2 – Look it up via the Register**
+
+Some stores assign different layouts per register (e.g. a cashier register vs a manager register).
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → Registers**
+2. Open the register you are configuring.
+3. On the **General** FastTab, check the **Screen layout** field.  
+   - If it is blank the register inherits the layout from its store (use Method 1).
+   - If it is populated, use that layout ID.
+
+---
+
+**Method 3 – Check from inside the running POS (quickest verification)**
+
+1. Sign in to Store Commerce.
+2. Go to **Settings** (hamburger menu → Settings) → **About**.
+3. The **Screen layout ID** (and version) is displayed on the About screen.  
+   Cross-reference that ID in HQ to confirm.
+
+---
+
+#### 4b – Add the Margin button to the identified layout
+
+1. In D365 HQ navigate to:
    **Retail and Commerce → Channel setup → POS setup → Screen layouts**
-2. Open the screen layout used by your store.
-3. In the **Transaction screen** designer, select the **toolbar** or the button grid panel on the sales lines area.
-4. Add a new button with:
+2. Open the layout you identified in step 4a.
+3. Click **Designer** to open the Screen layout designer (requires the MPOS Designer to be installed).
+4. In the Transaction screen, locate the **button grid** on the sales lines panel (or the toolbar area where you want the button).
+5. Add a new button with:
    | Setting | Value |
    |---|---|
    | Button text | Margin |
-   | Action | Custom operation |
+   | Action | **Custom operation** |
    | Operation ID | `50001` |
-5. **Save** and run the **Distribution schedule** job **1090 (Registers)** to push the layout to stores.
+   | Button image / colour | *(optional — choose any)* |
+6. **Save** the layout.
+7. Run **Distribution schedule → 1090 (Registers)** to push the updated layout to your stores.
 
-> **Alternative (Manifest-driven button):** The `Manifest.json` already declares the button directly
-> in `CartView → toolbarConfig → customToolbarItems`. If your Store Commerce version honours
-> manifest-declared toolbar items you do **not** need to configure the button grid in HQ – the
-> button will appear automatically.
+> **Tip:** If multiple stores use different layouts, repeat step 4b for each layout that needs the Margin button.
 
 ---
 
