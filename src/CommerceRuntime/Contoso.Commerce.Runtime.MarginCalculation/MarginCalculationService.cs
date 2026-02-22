@@ -9,7 +9,6 @@ namespace Contoso.Commerce.Runtime.MarginCalculation
     using System.Collections.ObjectModel;
     using System.Threading.Tasks;
     using Microsoft.Dynamics.Commerce.Runtime;
-    using Microsoft.Dynamics.Commerce.Runtime.Framework.Portability;
     using Microsoft.Dynamics.Commerce.Runtime.Messages;
     using Microsoft.Dynamics.Commerce.Runtime.RealtimeServices.Messages;
 
@@ -25,8 +24,11 @@ namespace Contoso.Commerce.Runtime.MarginCalculation
     ///
     /// Register this assembly in CommerceRuntime.ext.config:
     ///   &lt;add source="assembly" value="Contoso.Commerce.Runtime.MarginCalculation" /&gt;
+    ///
+    /// Note: [Export] attribute is NOT required in Commerce Scale Unit SDK.
+    /// Handlers implementing IRequestHandlerAsync are discovered automatically
+    /// when the assembly is registered in the composition config.
     /// </summary>
-    [Export(typeof(IRequestHandlerAsync))]
     public sealed class MarginCalculationService : IRequestHandlerAsync
     {
         /// <summary>

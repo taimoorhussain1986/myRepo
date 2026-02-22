@@ -3,17 +3,15 @@
 // ----------------------------------------------------------------------------
 
 /**
- * CRT proxy request: sent from POS to the Commerce Runtime
- * GetMarginCalculationRequest handler.
+ * Data class for passing margin calculation parameters to the CRT service.
+ * Maps to C# GetMarginCalculationRequest in the CRT extension.
  *
- * Maps 1-to-1 to the C# GetMarginCalculationRequest class.
+ * Note: In Retail SDK 7.2.x, Commerce.Proxy.Common does not exist.
+ * This is a plain TypeScript class used to hold the request parameters.
+ * The actual server call is made from MarginCalculationOperation.ts via
+ * the Commerce proxy manager once the Retail Server extension is deployed.
  */
-export class GetMarginCalculationRequest implements Commerce.Proxy.Common.IDataServiceRequest {
-    /** @inheritdoc */
-    public readonly serverRequestType = "GetMarginCalculationRequest";
-    /** @inheritdoc */
-    public readonly namespace = "Contoso.Commerce.Runtime.MarginCalculation";
-
+export class GetMarginCalculationRequest {
     /** Item identifier selected on the sales line. */
     public itemId: string;
 
@@ -22,7 +20,8 @@ export class GetMarginCalculationRequest implements Commerce.Proxy.Common.IDataS
 
     /**
      * Net amount of the selected sales line.
-     * Used as the **revenue** figure in the margin formula.
+     * Used as the revenue figure in the margin formula:
+     * Margin % = (NetAmount - PurchasePrice x Qty) / NetAmount x 100
      */
     public netAmount: number;
 

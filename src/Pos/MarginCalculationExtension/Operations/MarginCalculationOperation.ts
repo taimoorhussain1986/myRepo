@@ -2,124 +2,109 @@
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
 
-import { GetMarginCalculationRequest } from "../Messages/GetMarginCalculationRequest";
-import { IMarginCalculationResult }    from "../Messages/GetMarginCalculationResponse";
+import Commerce = require("Commerce");
+import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
- * POS Operation: MarginCalculation (operationId = 50001)
+ * POS Operation handler for Margin Calculation (Operation ID: 50001).
+ * Retail SDK 7.2.x / Commerce Scale Unit SDK compatible implementation.
  *
- * This operation is triggered by the custom "Margin" button placed on the
- * Sales Order transaction screen toolbar / button grid.
+ * Triggered when the "Margin" button (configured in HQ Screen Layout Designer
+ * with blank Action and Operation number 50001) is pressed.
  *
- * Flow:
- *   1. Validate that exactly one sales line is selected.
- *   2. Build a GetMarginCalculationRequest and execute it against the CRT.
- *   3. Navigate to MarginCalculationView to display the results.
- *
- * Register in Manifest.json:
- *   "operations": [{ "operationId": "50001", "operationRequestHandlerPath": "Operations/MarginCalculationOperation" }]
+ * Registered in Manifest.json requestHandlers:
+ *   { "name": "MarginCalculationOperation",
+ *     "description": "MarginCalculationOperation",
+ *     "modulePath": "Operations/MarginCalculationOperation" }
  */
-export default class MarginCalculationOperation
-    implements Commerce.Extensibility.IOperationHandler {
+export default class MarginCalculationOperation extends Commerce.Operations.OperationHandlerBase {
 
     /**
-     * Executes the Margin Calculation operation.
-     * @param context  POS operation context (provides runtime, currentTransaction, etc.)
-     * @param request  POS operation request (not used for custom data in this scenario).
+     * Entry point called by the POS runtime when operation 50001 is triggered.
      */
-    public async execute(
-        context: Commerce.Extensibility.IOperationContext,
-        request: Commerce.Extensibility.ExtensionOperationRequestType<void>
-    ): Promise<Commerce.Client.Entities.ICancelableResult> {
+    public executeAsync(
+        options: Commerce.Operations.IOperationOptions
+    ): IAsyncResult<Commerce.Client.Entities.ICancelable> {
 
-        // ----------------------------------------------------------------
-        // Step 1 – Validate that a single line is selected.
-        // In Store Commerce the selected line is typically exposed via
-        // context.selectedSalesLineNumber. We match on LineNumber first,
-        // then fall back to the first line so the operation always has data.
-        // ----------------------------------------------------------------
-        const selectedLineNumber = (context as any).selectedSalesLineNumber as number | undefined;
+        let asyncQueue = new Commerce.AsyncQueue();
 
-        const salesLine =
-            (selectedLineNumber !== undefined
-                ? context.currentTransaction?.salesLines?.find(
-                      (l) => l.LineNumber === selectedLineNumber
-                  )
-                : null) ??
-            context.currentTransaction?.salesLines?.[0];
+        asyncQueue.enqueue((): IAsyncResult<Commerce.Client.Entities.ICancelable> => {
 
-        if (!salesLine) {
-            await context.runtime.executeAsync(
-                new Commerce.Client.Entities.ClientEntities.ShowMessageNotificationOperationRequest(
-                    Commerce.Client.Entities.ClientEntities.NotificationDisplayType.ErrorDialog,
-                    "No sales line selected. Please select a sales line before calculating margin."
-                )
+            // ------------------------------------------------------------------
+            // Step 1: Get current cart and the first (or selected) cart line.
+            // ------------------------------------------------------------------
+            let cart: Commerce.Proxy.Entities.Cart = Commerce.Session.instance.cart;
+
+            if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
+                let errors: Commerce.Proxy.Entities.Error[] = [
+                    new Commerce.Proxy.Entities.Error(
+                        "MARGIN_CALC_NO_LINE",
+                        false,
+                        "No sales line found. Please add a product to the transaction first."
+                    )
+                ];
+                return Commerce.NotificationHandler.displayClientErrors(errors)
+                    .map((): Commerce.Client.Entities.ICancelable => ({ canceled: true }));
+            }
+
+            // Use first cart line as default (adapt if your SDK exposes the selected line).
+            let cartLine: Commerce.Proxy.Entities.CartLine = cart.CartLines[0];
+            let itemId: string     = cartLine.ItemId || "";
+            let quantity: number   = cartLine.Quantity || 0;
+            // NetAmountWithAllInclusiveTax is the revenue figure per the margin formula.
+            let netAmount: number  = cartLine.NetAmountWithAllInclusiveTax
+                                  || cartLine.NetAmount
+                                  || 0;
+
+            // ------------------------------------------------------------------
+            // Step 2: Get purchase price from CRT via Retail Server proxy.
+            //
+            // To complete the CRT real-time service integration:
+            //   a) Add a Retail Server extension controller (e.g. MarginCalculationController.cs
+            //      in BT.ScaleUnit\BT.RetailServer) that exposes an OData action calling
+            //      the CRT GetMarginCalculationRequest.
+            //   b) Run TypeScript proxy generation in BT.ScaleUnit to create the proxy manager.
+            //   c) Replace the placeholder block below with:
+            //
+            //      let manager = Commerce.Proxy.ObjectFactory
+            //          .Create<IMarginCalculationManager>(/* entity set name */);
+            //      return manager.getMarginCalculation(itemId, quantity, netAmount, dataAreaId)
+            //          .map((response): Commerce.Client.Entities.ICancelable => {
+            //              Commerce.Host.instance.navigateToView("MarginCalculationView", response);
+            //              return { canceled: false };
+            //          });
+            //
+            // Until the Retail Server controller is deployed and the proxy generated,
+            // purchasePrice defaults to 0 — the view will show margin based on revenue only.
+            // ------------------------------------------------------------------
+            let purchasePrice: number = 0;
+
+            let totalCost: number       = purchasePrice * Math.abs(quantity);
+            let marginAmount: number    = netAmount - totalCost;
+            let marginPercentage: number = netAmount !== 0
+                ? (marginAmount / netAmount) * 100
+                : 0;
+
+            let marginResult: IMarginCalculationResult = {
+                itemId:            itemId,
+                purchasePrice:     purchasePrice,
+                quantity:          quantity,
+                netAmount:         netAmount,
+                totalCost:         totalCost,
+                marginAmount:      marginAmount,
+                marginPercentage:  marginPercentage
+            };
+
+            // ------------------------------------------------------------------
+            // Step 3: Navigate to the Margin Calculation custom view.
+            // ------------------------------------------------------------------
+            Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
+
+            return Commerce.AsyncResult.createResolved<Commerce.Client.Entities.ICancelable>(
+                { canceled: false }
             );
-            return { canceled: true };
-        }
+        });
 
-        const itemId    = salesLine.ItemId ?? "";
-        const quantity  = salesLine.Quantity ?? 0;
-        const netAmount = salesLine.NetAmountWithAllInclusiveTax ?? salesLine.NetAmount ?? 0;
-
-        // DataAreaId: prefer channel's company, fall back to empty string.
-        const dataAreaId =
-            (context.runtime as any).currentChannel?.CompanyName ?? "";
-
-        // ----------------------------------------------------------------
-        // Step 2 – Call the CRT extension service.
-        // ----------------------------------------------------------------
-        let marginResult: IMarginCalculationResult | null = null;
-        try {
-            const crtRequest = new GetMarginCalculationRequest(
-                itemId,
-                quantity,
-                netAmount,
-                dataAreaId
-            );
-
-            const crtResponse = await context.runtime.executeAsync<
-                Commerce.Proxy.Common.IDataServiceResponse
-            >(crtRequest);
-
-            // The CRT response entity is mapped to IMarginCalculationResult.
-            marginResult = crtResponse?.data as IMarginCalculationResult;
-        } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : String(err);
-            await context.runtime.executeAsync(
-                new Commerce.Client.Entities.ClientEntities.ShowMessageNotificationOperationRequest(
-                    Commerce.Client.Entities.ClientEntities.NotificationDisplayType.ErrorDialog,
-                    `Margin calculation failed: ${msg}`
-                )
-            );
-            return { canceled: true };
-        }
-
-        if (!marginResult) {
-            await context.runtime.executeAsync(
-                new Commerce.Client.Entities.ClientEntities.ShowMessageNotificationOperationRequest(
-                    Commerce.Client.Entities.ClientEntities.NotificationDisplayType.ErrorDialog,
-                    "Margin calculation returned no data."
-                )
-            );
-            return { canceled: true };
-        }
-
-        // ----------------------------------------------------------------
-        // Step 3 – Navigate to the custom MarginCalculationView.
-        // ----------------------------------------------------------------
-        const navParams: Commerce.Extensibility.ICustomViewNavigationParameters = {
-            viewName: "MarginCalculationView",
-            viewType: Commerce.Client.Entities.ClientEntities.CustomViewType.Page,
-            initialData: marginResult
-        };
-
-        await context.runtime.executeAsync(
-            new Commerce.Client.Entities.ClientEntities.ShowModalDialogOperationRequest(
-                navParams
-            )
-        );
-
-        return { canceled: false };
+        return asyncQueue.run();
     }
 }

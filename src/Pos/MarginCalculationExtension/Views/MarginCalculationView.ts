@@ -2,93 +2,97 @@
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
 
+import Commerce = require("Commerce");
+import ko = require("knockout");
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * View controller for the Margin Calculation custom view.
+ * Retail SDK 7.2.x / Commerce Scale Unit SDK compatible implementation.
  *
- * This controller is instantiated by the POS framework when
- * MarginCalculationOperation navigates to "MarginCalculationView".
+ * Instantiated by the POS framework when MarginCalculationOperation calls:
+ *   Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult)
  *
  * The companion template is MarginCalculationView.html.
- *
- * Register in Manifest.json:
- *   "views": [{ "viewName": "MarginCalculationView", "viewPath": "Views/MarginCalculationView" }]
+ * Registered in Manifest.json create.views:
+ *   { "pageName": "MarginCalculationView", "viewControllerPath": "Views/MarginCalculationView" }
  */
-export default class MarginCalculationViewController
-    implements Commerce.Extensibility.IExtensionViewControllerBase {
+export default class MarginCalculationViewController {
 
-    // ----------------------------------------------------------------
-    // Observable properties bound to MarginCalculationView.html
-    // ----------------------------------------------------------------
+    // -----------------------------------------------------------------------
+    // Knockout observable properties bound to MarginCalculationView.html
+    // -----------------------------------------------------------------------
 
-    /** Item identifier label. */
-    public itemId: Commerce.Observable<string>;
+    /** Item identifier. */
+    public itemId: KnockoutObservable<string>;
 
-    /** Unit purchase price (cost) from InventTableModule. */
-    public purchasePriceDisplay: Commerce.Observable<string>;
+    /** Unit purchase price (cost) from InventTableModule (Purch). */
+    public purchasePriceDisplay: KnockoutObservable<string>;
 
     /** Net amount (revenue) from the sales line. */
-    public netAmountDisplay: Commerce.Observable<string>;
+    public netAmountDisplay: KnockoutObservable<string>;
 
-    /** Total cost = purchase price × quantity. */
-    public totalCostDisplay: Commerce.Observable<string>;
+    /** Total cost = purchase price x quantity. */
+    public totalCostDisplay: KnockoutObservable<string>;
 
-    /** Margin amount = revenue − cost. */
-    public marginAmountDisplay: Commerce.Observable<string>;
+    /** Margin amount = revenue - cost. */
+    public marginAmountDisplay: KnockoutObservable<string>;
 
     /** Margin percentage formatted to 2 decimal places. */
-    public marginPercentageDisplay: Commerce.Observable<string>;
+    public marginPercentageDisplay: KnockoutObservable<string>;
 
-    /** CSS class applied to the margin KPI card (green / red). */
-    public marginCssClass: Commerce.Observable<string>;
+    /** CSS class: "margin-positive" (green) or "margin-negative" (red). */
+    public marginCssClass: KnockoutObservable<string>;
 
-    // ----------------------------------------------------------------
-    // Button commands
-    // ----------------------------------------------------------------
-
-    /** Closes / dismisses this view. */
-    public closeCommand: Commerce.Client.Entities.ClientEntities.ProxyEntities.Command;
-
-    // ----------------------------------------------------------------
+    // -----------------------------------------------------------------------
     // Constructor
-    // ----------------------------------------------------------------
+    // -----------------------------------------------------------------------
 
-    constructor(context: Commerce.Extensibility.IExtensionViewContext) {
-        const data = context.viewParameters as IMarginCalculationResult;
+    /**
+     * @param data  Navigation data passed by MarginCalculationOperation via
+     *              Commerce.Host.instance.navigateToView("MarginCalculationView", data).
+     *              In Retail SDK 7.2.x this is the second argument of navigateToView.
+     */
+    constructor(data?: IMarginCalculationResult | any) {
 
-        // Guard: default to zeros if data is absent.
-        const result: IMarginCalculationResult = data ?? {
-            itemId: "",
-            purchasePrice: 0,
-            quantity: 0,
-            netAmount: 0,
-            totalCost: 0,
-            marginAmount: 0,
-            marginPercentage: 0
-        };
+        // Normalise: data may be passed directly as IMarginCalculationResult
+        // or wrapped in a container depending on the SDK version.
+        let result: IMarginCalculationResult;
+        if (data && typeof data === "object" && "itemId" in data) {
+            result = data as IMarginCalculationResult;
+        } else {
+            result = {
+                itemId:           "",
+                purchasePrice:    0,
+                quantity:         0,
+                netAmount:        0,
+                totalCost:        0,
+                marginAmount:     0,
+                marginPercentage: 0
+            };
+        }
 
         const fmt = (n: number): string =>
             n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        this.itemId                = Commerce.ko.observable(result.itemId);
-        this.purchasePriceDisplay  = Commerce.ko.observable(fmt(result.purchasePrice));
-        this.netAmountDisplay      = Commerce.ko.observable(fmt(result.netAmount));
-        this.totalCostDisplay      = Commerce.ko.observable(fmt(result.totalCost));
-        this.marginAmountDisplay   = Commerce.ko.observable(fmt(result.marginAmount));
-        this.marginPercentageDisplay = Commerce.ko.observable(
-            `${result.marginPercentage.toFixed(2)} %`
+        this.itemId                  = ko.observable(result.itemId);
+        this.purchasePriceDisplay    = ko.observable(fmt(result.purchasePrice));
+        this.netAmountDisplay        = ko.observable(fmt(result.netAmount));
+        this.totalCostDisplay        = ko.observable(fmt(result.totalCost));
+        this.marginAmountDisplay     = ko.observable(fmt(result.marginAmount));
+        this.marginPercentageDisplay = ko.observable(
+            result.marginPercentage.toFixed(2) + " %"
         );
-
-        // Colour the margin card: green when margin >= 0, red otherwise.
-        this.marginCssClass = Commerce.ko.observable(
+        this.marginCssClass = ko.observable(
             result.marginPercentage >= 0 ? "margin-positive" : "margin-negative"
         );
+    }
 
-        // Close button
-        this.closeCommand = {
-            label: "Close",
-            execute: () => context.viewContextManager.closeView()
-        };
+    /**
+     * Navigates back to the previous POS view (closes this view).
+     * Bound to the Close button in MarginCalculationView.html.
+     */
+    public onClose(): void {
+        Commerce.Host.instance.navigateBack();
     }
 }
