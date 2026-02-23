@@ -1,22 +1,15 @@
 {
+  "extends": "../devDependencies/pos-tsconfig-base.json",
   "compilerOptions": {
-    "target": "ES5",
-    "module": "amd",
-    "lib": ["ES6", "DOM"],
-    "noImplicitAny": false,
-    "noEmitOnError": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./",
-    "skipLibCheck": true
+    "baseUrl": "..",
+    "paths": {
+      "knockout": [ "Libraries/knockout" ]
+    },
+    "noImplicitAny": false
   },
   "include": [
     "Operations/**/*.ts",
     "Views/**/*.ts",
     "Messages/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
   ]
 }

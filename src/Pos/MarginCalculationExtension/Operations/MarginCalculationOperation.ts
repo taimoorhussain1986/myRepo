@@ -1,12 +1,10 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
-// Commerce is a global ambient namespace injected by the BT.POS project's SDK
-// type definitions.  When this file is compiled standalone (our own tsconfig),
-// no type definition file is in scope, so we declare Commerce as `any` here.
-// This is a MODULE-LOCAL declaration (the file has `export`) so it does NOT
-// conflict with the global `namespace Commerce` in the parent BT.POS project.
-declare var Commerce: any;
+// Commerce is a global ambient namespace declared by the SDK type definitions
+// included via pos-tsconfig-base.json (from the parent BT.POS project).
+// Do NOT add `import Commerce = require("Commerce")` – it is not an AMD module.
+// ----------------------------------------------------------------------------
 
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
@@ -14,39 +12,31 @@ import { IMarginCalculationResult } from "../Messages/GetMarginCalculationRespon
  * POS Operation handler for Margin Calculation (Operation ID: 50001).
  *
  * The "Margin" button must be added to the button grid in HQ via:
- * Screen Layout Designer → blank Action → Operation number 50001
+ *   Screen Layout Designer → blank Action → Operation number 50001
  *
  * Registered in Manifest.json requestHandlers:
  *   { "name": "MarginCalculationOperation",
  *     "description": "MarginCalculationOperation",
  *     "modulePath": "Operations/MarginCalculationOperation" }
  */
+export default class MarginCalculationOperation extends Commerce.Operations.OperationHandlerBase {
 
-// Intermediate variable so TypeScript 4.x can accept `extends _Base`.
-// `Commerce` is typed as `any` above, so property access returns `any`.
-// TypeScript 4.2+ allows a class to extend an expression typed as `any`.
-const _Base: any = Commerce.Operations.OperationHandlerBase;
+    /** Called by the POS runtime when operation 50001 fires. */
+    public executeAsync(
+        options: Commerce.Operations.IOperationOptions
+    ): IAsyncResult<Commerce.Client.Entities.ICancelable> {
 
-export default class MarginCalculationOperation extends _Base {
+        let asyncQueue: Commerce.AsyncQueue = new Commerce.AsyncQueue();
 
-    /**
-     * Called by the POS runtime when operation 50001 fires.
-     */
-    public executeAsync(options: any): any {
-
-        // All variables are typed as `any` to avoid TS2503 namespace errors
-        // when compiling without the full BT.POS SDK type definitions.
-        let asyncQueue: any = new Commerce.AsyncQueue();
-
-        asyncQueue.enqueue((): any => {
+        asyncQueue.enqueue((): IAsyncResult<Commerce.Client.Entities.ICancelable> => {
 
             // ------------------------------------------------------------------
             // Step 1: Get current cart and the active cart line.
             // ------------------------------------------------------------------
-            let cart: any = Commerce.Session.instance.cart;
+            let cart: Commerce.Proxy.Entities.Cart = Commerce.Session.instance.cart;
 
             if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-                let errors: any[] = [
+                let errors: Commerce.Proxy.Entities.Error[] = [
                     new Commerce.Proxy.Entities.Error(
                         "MARGIN_CALC_NO_LINE",
                         false,
@@ -54,18 +44,18 @@ export default class MarginCalculationOperation extends _Base {
                     )
                 ];
                 return Commerce.NotificationHandler.displayClientErrors(errors)
-                    .map((): any => ({ canceled: true }));
+                    .map((): Commerce.Client.Entities.ICancelable => ({ canceled: true }));
             }
 
             // Default to first cart line.
             // Adapt to use Commerce.Session.instance.selectedCartLine if available in your SDK.
-            let cartLine: any = cart.CartLines[0];
+            let cartLine: Commerce.Proxy.Entities.CartLine = cart.CartLines[0];
 
             let itemId: string    = cartLine.ItemId    || "";
             let quantity: number  = cartLine.Quantity  || 0;
             // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
-            let netAmount: number = cartLine.NetAmountWithAllInclusiveTax
-                                 || cartLine.NetAmount
+            let netAmount: number = (cartLine as any).NetAmountWithAllInclusiveTax
+                                 || (cartLine as any).NetAmount
                                  || 0;
 
             // ------------------------------------------------------------------
@@ -79,7 +69,7 @@ export default class MarginCalculationOperation extends _Base {
             // Proxy call example (replace this whole block):
             //   let manager = Commerce.Proxy.ObjectFactory.Create("<entityset>");
             //   return manager.getMarginCalculation(itemId, quantity, netAmount, dataAreaId)
-            //       .map((r: any): any => {
+            //       .map((r: IMarginCalculationResult): Commerce.Client.Entities.ICancelable => {
             //           Commerce.Host.instance.navigateToView("MarginCalculationView", r);
             //           return { canceled: false };
             //       });
@@ -109,7 +99,9 @@ export default class MarginCalculationOperation extends _Base {
             // ------------------------------------------------------------------
             Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
 
-            return Commerce.AsyncResult.createResolved({ canceled: false });
+            return Commerce.AsyncResult.createResolved<Commerce.Client.Entities.ICancelable>(
+                { canceled: false }
+            );
         });
 
         return asyncQueue.run();

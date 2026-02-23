@@ -1,14 +1,12 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
-// Commerce and ko are global objects loaded by the POS framework at runtime.
-// When this file is compiled standalone (our own tsconfig), no SDK type
-// definition file is in scope, so we declare both as `any` here.
-// These are MODULE-LOCAL declarations (file has `export`) so they do NOT
-// conflict with the global `namespace Commerce` in the parent BT.POS project.
-declare var Commerce: any;
-declare var ko: any;
+// Commerce is a global ambient namespace from SDK type defs (pos-tsconfig-base.json).
+// ko is mapped to Libraries/knockout via the "paths" entry in tsconfig.json.
+// Do NOT add `import Commerce = require("Commerce")` – it is not an AMD module.
+// ----------------------------------------------------------------------------
 
+import ko = require("knockout");
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
@@ -25,31 +23,29 @@ import { IMarginCalculationResult } from "../Messages/GetMarginCalculationRespon
 export default class MarginCalculationViewController {
 
     // -----------------------------------------------------------------------
-    // Knockout observable properties.
-    // Typed as `any` to compile without knockout.d.ts in standalone tsconfig.
-    // At runtime these are standard KnockoutObservable instances.
+    // Knockout observable properties bound to MarginCalculationView.html
     // -----------------------------------------------------------------------
 
     /** Item identifier. */
-    public itemId: any;
+    public itemId: KnockoutObservable<string>;
 
     /** Unit purchase price (cost) from InventTableModule (Purch). */
-    public purchasePriceDisplay: any;
+    public purchasePriceDisplay: KnockoutObservable<string>;
 
     /** Net amount (revenue) from the sales line. */
-    public netAmountDisplay: any;
+    public netAmountDisplay: KnockoutObservable<string>;
 
     /** Total cost = purchase price × quantity. */
-    public totalCostDisplay: any;
+    public totalCostDisplay: KnockoutObservable<string>;
 
     /** Margin amount = revenue − cost. */
-    public marginAmountDisplay: any;
+    public marginAmountDisplay: KnockoutObservable<string>;
 
     /** Margin percentage formatted to 2 decimal places. */
-    public marginPercentageDisplay: any;
+    public marginPercentageDisplay: KnockoutObservable<string>;
 
     /** CSS class: "margin-positive" (green) or "margin-negative" (red). */
-    public marginCssClass: any;
+    public marginCssClass: KnockoutObservable<string>;
 
     // -----------------------------------------------------------------------
     // Constructor
@@ -59,7 +55,7 @@ export default class MarginCalculationViewController {
      * @param data  Navigation data passed via
      *              Commerce.Host.instance.navigateToView("MarginCalculationView", data).
      */
-    constructor(data?: any) {
+    constructor(data?: IMarginCalculationResult | any) {
 
         // Guard: fall back to zeros if navigation data is missing or malformed.
         let result: IMarginCalculationResult;
@@ -77,9 +73,8 @@ export default class MarginCalculationViewController {
             };
         }
 
-        let fmt: (n: number) => string = function(n: number): string {
-            return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        };
+        let fmt: (n: number) => string = (n: number): string =>
+            n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
         this.itemId                  = ko.observable(result.itemId);
         this.purchasePriceDisplay    = ko.observable(fmt(result.purchasePrice));
