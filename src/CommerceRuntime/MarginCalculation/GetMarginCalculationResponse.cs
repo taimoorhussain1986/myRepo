@@ -2,7 +2,7 @@
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
 
-namespace Contoso.Commerce.Runtime.MarginCalculation
+namespace Beaumont.Commerce.Runtime.MarginCalculation
 {
     using Microsoft.Dynamics.Commerce.Runtime.Messages;
 

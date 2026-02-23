@@ -2,7 +2,7 @@
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
 
-namespace Contoso.Commerce.Runtime.MarginCalculation
+namespace Beaumont.Commerce.Runtime.MarginCalculation
 {
     using System;
     using System.Collections.Generic;
@@ -22,12 +22,13 @@ namespace Contoso.Commerce.Runtime.MarginCalculation
     ///      <c>InventTableModule.Price</c> (ModuleType = Purch).
     ///   3. Compute margin and return <see cref="GetMarginCalculationResponse"/>.
     ///
-    /// Register this assembly in CommerceRuntime.ext.config:
-    ///   &lt;add source="assembly" value="Contoso.Commerce.Runtime.MarginCalculation" /&gt;
+    /// This class lives inside BT.CommerceRuntime (no separate project needed).
+    /// BT.CommerceRuntime.dll is already registered in CommerceRuntime.ext.config,
+    /// so no extra config entry is required for this handler.
     ///
-    /// Note: [Export] attribute is NOT required in Commerce Scale Unit SDK.
+    /// Note: [Export] attribute is NOT used in Store Commerce SDK 9.53.x.
     /// Handlers implementing IRequestHandlerAsync are discovered automatically
-    /// when the assembly is registered in the composition config.
+    /// by assembly scanning when the DLL is in the composition config.
     /// </summary>
     public sealed class MarginCalculationService : IRequestHandlerAsync
     {
