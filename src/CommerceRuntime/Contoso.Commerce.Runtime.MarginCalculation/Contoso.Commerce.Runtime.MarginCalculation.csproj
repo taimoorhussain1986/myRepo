@@ -2,36 +2,34 @@
 
   <PropertyGroup>
     <!--
-      TargetFramework: align with your Commerce Runtime host.
-      - D365 10.0.20 – 10.0.35 (on-premises / self-hosted CSU): net472
-      - Cloud Scale Unit (10.0.36+): net6.0 or net8.0
-      Check your existing BT.CommerceRuntime project's TargetFramework and match it.
+      TargetFramework: must match your BT.CommerceRuntime project exactly.
+      Store Commerce App SDK 9.53.x (D365 10.0.53) uses netstandard2.0.
+      Open BT.CommerceRuntime.csproj and check its <TargetFramework> — use the same value here.
     -->
-    <TargetFramework>net472</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <AssemblyName>Contoso.Commerce.Runtime.MarginCalculation</AssemblyName>
     <RootNamespace>Contoso.Commerce.Runtime.MarginCalculation</RootNamespace>
     <LangVersion>9.0</LangVersion>
     <Deterministic>true</Deterministic>
     <!--
       OUTPUT PATH:
-      The DLL is placed in bin\Debug\ or bin\Release\ relative to this .csproj.
-      In Visual Studio: Build menu → Configuration Manager → set Configuration to Release.
-      After build: look in
-        BT.CommerceRuntime\MarginCalculation\bin\Release\net472\
+      The DLL is placed in bin\Debug\netstandard2.0\ or bin\Release\netstandard2.0\ relative to this .csproj.
+      After build, look here:
+        BT.CommerceRuntime\MarginCalculation\bin\Debug\netstandard2.0\
             Contoso.Commerce.Runtime.MarginCalculation.dll
+      Deploy to:
+        C:\Program Files\Microsoft Dynamics 365\10.0\Commerce Scale Unit\bin\ext\
     -->
   </PropertyGroup>
 
   <PropertyGroup>
     <!--
-      CommerceSDKVersion fallback.
-      If your BT.ScaleUnit solution already defines $(CommerceSDKVersion) in a
-      Directory.Build.props file, that value is used automatically.
-      Otherwise the fallback below is used – update it to match your SDK version.
-      Find your version: open any existing BT.CommerceRuntime .csproj and look
-      at its PackageReference version for Microsoft.Dynamics.Commerce.Runtime.*.
+      CommerceSDKVersion: must match the version used by BT.CommerceRuntime and BT.POS exactly.
+      Your installed version (from the NuGet path in the build errors): 9.53.26002.2
+      If your Directory.Build.props already defines $(CommerceSDKVersion), that value is used.
+      Otherwise this fallback applies. Update it if your version differs.
     -->
-    <CommerceSDKVersion Condition="'$(CommerceSDKVersion)' == ''">9.35.22266.5</CommerceSDKVersion>
+    <CommerceSDKVersion Condition="'$(CommerceSDKVersion)' == ''">9.53.26002.2</CommerceSDKVersion>
   </PropertyGroup>
 
   <ItemGroup>
