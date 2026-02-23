@@ -1,12 +1,17 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
-// The [Export(typeof(IRequestHandlerAsync))] attribute is applied directly
-// on MarginCalculationService.  No separate factory class is needed.
+// This file is intentionally empty.
 //
-// To register the extension, add the following to CommerceRuntime.ext.config:
+// In Commerce Scale Unit SDK, no [Export] attribute or factory class is needed.
+// The IRequestHandlerAsync implementation in MarginCalculationService.cs is
+// discovered automatically when the assembly is registered in:
 //
-//   <composition>
+//   CommerceRuntime.ext.config:
 //     <add source="assembly" value="Contoso.Commerce.Runtime.MarginCalculation" />
-//   </composition>
+//
+// Do NOT add any code, using directives, or references to:
+//   - Microsoft.Dynamics.Commerce.Runtime.Framework.Portability
+//   - System.ComponentModel.Composition
+// Those namespaces are NOT available in the Commerce Scale Unit SDK.
 // ----------------------------------------------------------------------------

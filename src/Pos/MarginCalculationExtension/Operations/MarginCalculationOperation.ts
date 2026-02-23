@@ -1,16 +1,20 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
+// Note: Do NOT add `import Commerce = require("Commerce")`.
+// In Retail SDK 7.2.x the Commerce namespace is a GLOBAL declared by the
+// BT.POS project's type definition files (Pos.Api.d.ts / PosApi.d.ts).
+// Importing it as an AMD module causes TS2792 / TS2304 errors.
+// ----------------------------------------------------------------------------
 
-import Commerce = require("Commerce");
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * POS Operation handler for Margin Calculation (Operation ID: 50001).
- * Retail SDK 7.2.x / Commerce Scale Unit SDK compatible implementation.
+ * Retail SDK 7.2.x compatible.
  *
- * Triggered when the "Margin" button (configured in HQ Screen Layout Designer
- * with blank Action and Operation number 50001) is pressed.
+ * The "Margin" button must be added to the button grid in HQ
+ * (Screen Layout Designer → blank Action → Operation number 50001).
  *
  * Registered in Manifest.json requestHandlers:
  *   { "name": "MarginCalculationOperation",
@@ -20,18 +24,18 @@ import { IMarginCalculationResult } from "../Messages/GetMarginCalculationRespon
 export default class MarginCalculationOperation extends Commerce.Operations.OperationHandlerBase {
 
     /**
-     * Entry point called by the POS runtime when operation 50001 is triggered.
+     * Called by the POS runtime when operation 50001 fires.
+     * Return type is `any` so this file compiles standalone (IAsyncResult is
+     * a global defined in the parent BT.POS project's type definitions).
      */
-    public executeAsync(
-        options: Commerce.Operations.IOperationOptions
-    ): IAsyncResult<Commerce.Client.Entities.ICancelable> {
+    public executeAsync(options: Commerce.Operations.IOperationOptions): any {
 
-        let asyncQueue = new Commerce.AsyncQueue();
+        let asyncQueue: Commerce.AsyncQueue = new Commerce.AsyncQueue();
 
-        asyncQueue.enqueue((): IAsyncResult<Commerce.Client.Entities.ICancelable> => {
+        asyncQueue.enqueue((): any => {
 
             // ------------------------------------------------------------------
-            // Step 1: Get current cart and the first (or selected) cart line.
+            // Step 1: Get current cart and the active cart line.
             // ------------------------------------------------------------------
             let cart: Commerce.Proxy.Entities.Cart = Commerce.Session.instance.cart;
 
@@ -44,65 +48,62 @@ export default class MarginCalculationOperation extends Commerce.Operations.Oper
                     )
                 ];
                 return Commerce.NotificationHandler.displayClientErrors(errors)
-                    .map((): Commerce.Client.Entities.ICancelable => ({ canceled: true }));
+                    .map((): any => ({ canceled: true }));
             }
 
-            // Use first cart line as default (adapt if your SDK exposes the selected line).
+            // Default to first cart line. Adapt here to use the selected line
+            // if your SDK version exposes Commerce.Session.instance.selectedCartLine.
             let cartLine: Commerce.Proxy.Entities.CartLine = cart.CartLines[0];
-            let itemId: string     = cartLine.ItemId || "";
-            let quantity: number   = cartLine.Quantity || 0;
-            // NetAmountWithAllInclusiveTax is the revenue figure per the margin formula.
-            let netAmount: number  = cartLine.NetAmountWithAllInclusiveTax
-                                  || cartLine.NetAmount
-                                  || 0;
+
+            let itemId: string    = cartLine.ItemId    || "";
+            let quantity: number  = cartLine.Quantity  || 0;
+            // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
+            let netAmount: number = (cartLine as any).NetAmountWithAllInclusiveTax
+                                 || (cartLine as any).NetAmount
+                                 || 0;
 
             // ------------------------------------------------------------------
             // Step 2: Get purchase price from CRT via Retail Server proxy.
             //
-            // To complete the CRT real-time service integration:
-            //   a) Add a Retail Server extension controller (e.g. MarginCalculationController.cs
-            //      in BT.ScaleUnit\BT.RetailServer) that exposes an OData action calling
-            //      the CRT GetMarginCalculationRequest.
-            //   b) Run TypeScript proxy generation in BT.ScaleUnit to create the proxy manager.
-            //   c) Replace the placeholder block below with:
+            // Replace the placeholder below once you have:
+            //   a) A Retail Server extension controller (BT.RetailServer project)
+            //      that exposes an OData action calling GetMarginCalculationRequest.
+            //   b) Generated TypeScript proxies via BT.ScaleUnit proxy generation.
             //
-            //      let manager = Commerce.Proxy.ObjectFactory
-            //          .Create<IMarginCalculationManager>(/* entity set name */);
-            //      return manager.getMarginCalculation(itemId, quantity, netAmount, dataAreaId)
-            //          .map((response): Commerce.Client.Entities.ICancelable => {
-            //              Commerce.Host.instance.navigateToView("MarginCalculationView", response);
-            //              return { canceled: false };
-            //          });
+            // Proxy call example (replace placeholder):
+            //   let manager = Commerce.Proxy.ObjectFactory.Create<IMarginManager>("<entityset>");
+            //   return manager.getMarginCalculation(itemId, quantity, netAmount, dataAreaId)
+            //       .map((r: any): any => {
+            //           Commerce.Host.instance.navigateToView("MarginCalculationView", r);
+            //           return { canceled: false };
+            //       });
             //
-            // Until the Retail Server controller is deployed and the proxy generated,
-            // purchasePrice defaults to 0 — the view will show margin based on revenue only.
+            // Until the controller is deployed, purchasePrice defaults to 0.
             // ------------------------------------------------------------------
             let purchasePrice: number = 0;
 
-            let totalCost: number       = purchasePrice * Math.abs(quantity);
-            let marginAmount: number    = netAmount - totalCost;
+            let totalCost: number        = purchasePrice * Math.abs(quantity);
+            let marginAmount: number     = netAmount - totalCost;
             let marginPercentage: number = netAmount !== 0
                 ? (marginAmount / netAmount) * 100
                 : 0;
 
             let marginResult: IMarginCalculationResult = {
-                itemId:            itemId,
-                purchasePrice:     purchasePrice,
-                quantity:          quantity,
-                netAmount:         netAmount,
-                totalCost:         totalCost,
-                marginAmount:      marginAmount,
-                marginPercentage:  marginPercentage
+                itemId:           itemId,
+                purchasePrice:    purchasePrice,
+                quantity:         quantity,
+                netAmount:        netAmount,
+                totalCost:        totalCost,
+                marginAmount:     marginAmount,
+                marginPercentage: marginPercentage
             };
 
             // ------------------------------------------------------------------
-            // Step 3: Navigate to the Margin Calculation custom view.
+            // Step 3: Navigate to the custom Margin Calculation view.
             // ------------------------------------------------------------------
             Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
 
-            return Commerce.AsyncResult.createResolved<Commerce.Client.Entities.ICancelable>(
-                { canceled: false }
-            );
+            return Commerce.AsyncResult.createResolved<any>({ canceled: false });
         });
 
         return asyncQueue.run();
