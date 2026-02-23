@@ -2,29 +2,52 @@
 
   <PropertyGroup>
     <!--
-      Target framework: align with your Commerce Runtime host.
-      D365 10.0.20–10.0.35 uses net472; newer CSU (cloud scale unit) hosts
-      may target net6.0 or net8.0 – verify against your Commerce SDK version
-      and update TargetFramework accordingly.
+      TargetFramework: align with your Commerce Runtime host.
+      - D365 10.0.20 – 10.0.35 (on-premises / self-hosted CSU): net472
+      - Cloud Scale Unit (10.0.36+): net6.0 or net8.0
+      Check your existing BT.CommerceRuntime project's TargetFramework and match it.
     -->
     <TargetFramework>net472</TargetFramework>
     <AssemblyName>Contoso.Commerce.Runtime.MarginCalculation</AssemblyName>
     <RootNamespace>Contoso.Commerce.Runtime.MarginCalculation</RootNamespace>
-    <Nullable>enable</Nullable>
     <LangVersion>9.0</LangVersion>
-    <!-- Ensure deterministic builds -->
     <Deterministic>true</Deterministic>
+    <!--
+      OUTPUT PATH:
+      The DLL is placed in bin\Debug\ or bin\Release\ relative to this .csproj.
+      In Visual Studio: Build menu → Configuration Manager → set Configuration to Release.
+      After build: look in
+        BT.CommerceRuntime\MarginCalculation\bin\Release\net472\
+            Contoso.Commerce.Runtime.MarginCalculation.dll
+    -->
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <!--
+      CommerceSDKVersion fallback.
+      If your BT.ScaleUnit solution already defines $(CommerceSDKVersion) in a
+      Directory.Build.props file, that value is used automatically.
+      Otherwise the fallback below is used – update it to match your SDK version.
+      Find your version: open any existing BT.CommerceRuntime .csproj and look
+      at its PackageReference version for Microsoft.Dynamics.Commerce.Runtime.*.
+    -->
+    <CommerceSDKVersion Condition="'$(CommerceSDKVersion)' == ''">9.35.22266.5</CommerceSDKVersion>
   </PropertyGroup>
 
   <ItemGroup>
     <!--
-      These packages are distributed via the Commerce SDK NuGet feed.
-      Add the following feed to your nuget.config:
-        https://pkgs.dev.azure.com/commerce-sdk/.../_packaging/sdk/nuget/v3/index.json
-      Version: align with your D365 F&O / Commerce Runtime version (e.g. 10.0.x).
+      NuGet source for Commerce SDK packages:
+        Feed URL: https://pkgs.dev.azure.com/Dynamics365/
+                    _packaging/Commerce-SDK/nuget/v3/index.json
+      Add this to your solution's nuget.config (the one next to your .sln file)
+      under <packageSources> if you get "package not found" errors.
+
+      The version must match your existing BT.CommerceRuntime references exactly.
+      To find your version: open BT.CommerceRuntime\packages.config or any
+      existing .csproj and check the Microsoft.Dynamics.Commerce.Runtime.* version.
     -->
-    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.Framework"     Version="$(CommerceSDKVersion)" />
-    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.Messages"      Version="$(CommerceSDKVersion)" />
+    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.Framework"                Version="$(CommerceSDKVersion)" />
+    <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.Messages"                 Version="$(CommerceSDKVersion)" />
     <PackageReference Include="Microsoft.Dynamics.Commerce.Runtime.RealtimeServices.Messages" Version="$(CommerceSDKVersion)" />
   </ItemGroup>
 
