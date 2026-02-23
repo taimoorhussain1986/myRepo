@@ -1,24 +1,18 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Contoso. All rights reserved.
 // ----------------------------------------------------------------------------
-// Note: Do NOT add `import Commerce = require("Commerce")` or
-//       `import ko = require("knockout")`.
-// In Retail SDK 7.2.x:
-//   - Commerce is a GLOBAL namespace (defined by BT.POS project type defs).
-//   - ko is loaded at runtime by the POS framework (declared as global below).
-// Importing either as AMD modules causes TS2792 / TS2304 errors.
-// ----------------------------------------------------------------------------
-
-// ko is loaded by the POS AMD loader from Libraries/knockout (see Manifest.json).
-// Declaring as `any` lets us call ko.observable() without requiring knockout.d.ts
-// to be in scope in the standalone extension tsconfig.
+// Commerce and ko are global objects loaded by the POS framework at runtime.
+// When this file is compiled standalone (our own tsconfig), no SDK type
+// definition file is in scope, so we declare both as `any` here.
+// These are MODULE-LOCAL declarations (file has `export`) so they do NOT
+// conflict with the global `namespace Commerce` in the parent BT.POS project.
+declare var Commerce: any;
 declare var ko: any;
 
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * View controller for the Margin Calculation custom view.
- * Retail SDK 7.2.x compatible.
  *
  * Navigated to by MarginCalculationOperation via:
  *   Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult)
@@ -31,8 +25,8 @@ import { IMarginCalculationResult } from "../Messages/GetMarginCalculationRespon
 export default class MarginCalculationViewController {
 
     // -----------------------------------------------------------------------
-    // Knockout observable properties – typed as `any` so the file compiles
-    // without a knockout.d.ts reference in the standalone tsconfig.
+    // Knockout observable properties.
+    // Typed as `any` to compile without knockout.d.ts in standalone tsconfig.
     // At runtime these are standard KnockoutObservable instances.
     // -----------------------------------------------------------------------
 
@@ -62,12 +56,12 @@ export default class MarginCalculationViewController {
     // -----------------------------------------------------------------------
 
     /**
-     * @param data  Navigation data passed by MarginCalculationOperation via
+     * @param data  Navigation data passed via
      *              Commerce.Host.instance.navigateToView("MarginCalculationView", data).
      */
-    constructor(data?: IMarginCalculationResult | any) {
+    constructor(data?: any) {
 
-        // Guard: fall back to zeros if data is missing or of wrong shape.
+        // Guard: fall back to zeros if navigation data is missing or malformed.
         let result: IMarginCalculationResult;
         if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
             result = data as IMarginCalculationResult;
@@ -99,7 +93,8 @@ export default class MarginCalculationViewController {
     }
 
     /**
-     * Navigates back — bound to the Close button in MarginCalculationView.html.
+     * Navigates back to the previous POS view.
+     * Bound to the Close button in MarginCalculationView.html.
      */
     public onClose(): void {
         Commerce.Host.instance.navigateBack();
