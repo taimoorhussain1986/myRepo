@@ -32,86 +32,99 @@ export default class MarginCalculationOperation extends _Base {
     /**
      * Called by the POS runtime when operation 50001 fires.
      * @param options  Runtime options passed by the button grid framework.
+     *
+     * Returns a native Promise — Commerce.AsyncQueue is a Retail SDK 7.2.x
+     * construct that does NOT exist in Store Commerce 9.55.  Using it would
+     * throw "Commerce.AsyncQueue is not a constructor" at runtime, which the
+     * framework catches and surfaces as "operation is not supported".
      */
     public executeAsync(options: any): any {
 
-        let asyncQueue: any = new Commerce.AsyncQueue();
+        return new Promise<any>((resolve: any, reject: any): void => {
 
-        asyncQueue.enqueue((): any => {
+            try {
+                // ------------------------------------------------------------------
+                // Step 1 — Resolve the active cart and selected cart line.
+                // Guard every Commerce.* access with a null-check so that a
+                // missing runtime API gives a safe message, not a thrown TypeError.
+                // ------------------------------------------------------------------
+                let session: any = Commerce.Session && Commerce.Session.instance;
+                let cart: any    = session ? session.cart : null;
 
-            // ------------------------------------------------------------------
-            // Step 1 — Resolve the active cart and selected cart line.
-            // ------------------------------------------------------------------
-            let cart: any = Commerce.Session.instance.cart;
+                if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
+                    // Show a friendly error and cancel without navigating.
+                    alert("No sales line found. Please select a product line first.");
+                    resolve({ canceled: true });
+                    return;
+                }
 
-            if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-                let errors: any[] = [
-                    new Commerce.Proxy.Entities.Error(
-                        "MARGIN_CALC_NO_LINE",
-                        false,
-                        "No sales line found. Please add a product to the transaction first."
-                    )
-                ];
-                return Commerce.NotificationHandler.displayClientErrors(errors)
-                    .map((): any => ({ canceled: true }));
+                // Prefer the currently-highlighted line; fall back to the first line.
+                let selectedId: string = cart.SelectedCartLineId || "";
+                let cartLine: any = cart.CartLines.filter(
+                    (l: any) => l.LineId === selectedId
+                )[0] || cart.CartLines[0];
+
+                let itemId: string    = cartLine.ItemId    || "";
+                let quantity: number  = cartLine.Quantity   || 0;
+                // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
+                let netAmount: number = cartLine.NetAmountWithAllInclusiveTax
+                                     || cartLine.NetAmount
+                                     || 0;
+
+                // ------------------------------------------------------------------
+                // Step 2 — Retrieve purchase price from CRT via real-time service.
+                //
+                // PHASE 1 (current): purchasePrice = 0 so you can test the view
+                // end-to-end before the X++ real-time service is deployed.
+                //
+                // PHASE 2 (after deploying the X++ real-time service + CRT handler):
+                // Replace the line below with a call to the generated proxy, e.g.:
+                //
+                //   let manager = Commerce.Proxy.ObjectFactory.Create<any>("...");
+                //   manager.GetMarginCalculation(itemId, quantity, netAmount)
+                //       .then((result: any) => {
+                //           Commerce.Host.instance.navigateToView("MarginCalculationView", result);
+                //           resolve({ canceled: false });
+                //       })
+                //       .catch(reject);
+                //   return; // exit the try-block; resolve() called in callback
+                // ------------------------------------------------------------------
+                let purchasePrice: number = 0;
+
+                let totalCost: number        = purchasePrice * Math.abs(quantity);
+                let marginAmount: number     = netAmount - totalCost;
+                let marginPercentage: number = netAmount !== 0
+                    ? (marginAmount / netAmount) * 100
+                    : 0;
+
+                let marginResult: IMarginCalculationResult = {
+                    itemId:            itemId,
+                    purchasePrice:     purchasePrice,
+                    quantity:          quantity,
+                    netAmount:         netAmount,
+                    totalCost:         totalCost,
+                    marginAmount:      marginAmount,
+                    marginPercentage:  marginPercentage
+                };
+
+                // ------------------------------------------------------------------
+                // Step 3 — Navigate to the custom view, passing the margin data.
+                // ------------------------------------------------------------------
+                let host: any = Commerce.Host && Commerce.Host.instance;
+                if (host && typeof host.navigateToView === "function") {
+                    host.navigateToView("MarginCalculationView", marginResult);
+                } else {
+                    // Fallback for environments where navigateToView is absent.
+                    alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %");
+                }
+
+                resolve({ canceled: false });
+
+            } catch (ex) {
+                // Surface exceptions as rejected Promises so the framework can
+                // display them cleanly instead of showing "operation not supported".
+                reject(ex);
             }
-
-            // Prefer the currently-highlighted line; fall back to the first line.
-            let selectedId: string = cart.SelectedCartLineId || "";
-            let cartLine: any = cart.CartLines.filter(
-                (l: any) => l.LineId === selectedId
-            )[0] || cart.CartLines[0];
-
-            let itemId: string   = cartLine.ItemId   || "";
-            let quantity: number = cartLine.Quantity  || 0;
-            // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
-            let netAmount: number = cartLine.NetAmountWithAllInclusiveTax
-                                 || cartLine.NetAmount
-                                 || 0;
-
-            // ------------------------------------------------------------------
-            // Step 2 — Retrieve purchase price from CRT via real-time service.
-            //
-            // PHASE 1 (current): purchasePrice is 0 so you can test the view
-            // end-to-end before the X++ real-time service is deployed.
-            //
-            // PHASE 2 (after deploying ContosoGetItemPurchasePrice X++ + CRT):
-            // The build will auto-generate a proxy entry in DataService/DataServiceRequests.g.ts.
-            // Replace the block below with:
-            //
-            //   let getMarginReq: any = new Commerce.Proxy.DataServiceRequests
-            //       .GetMarginCalculationRequest(itemId, quantity, netAmount);
-            //   return asyncQueue.runNext().run(getMarginReq)
-            //       .map((result: any) => {
-            //           Commerce.Host.instance.navigateToView("MarginCalculationView", result.data);
-            //           return { canceled: false };
-            //       });
-            // ------------------------------------------------------------------
-            let purchasePrice: number = 0;
-
-            let totalCost: number        = purchasePrice * Math.abs(quantity);
-            let marginAmount: number     = netAmount - totalCost;
-            let marginPercentage: number = netAmount !== 0
-                ? (marginAmount / netAmount) * 100
-                : 0;
-
-            let marginResult: IMarginCalculationResult = {
-                itemId:           itemId,
-                purchasePrice:    purchasePrice,
-                quantity:         quantity,
-                netAmount:        netAmount,
-                totalCost:        totalCost,
-                marginAmount:     marginAmount,
-                marginPercentage: marginPercentage
-            };
-
-            // ------------------------------------------------------------------
-            // Step 3 — Navigate to the custom view, passing the margin data.
-            // ------------------------------------------------------------------
-            Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
-            return asyncQueue.runNext();
         });
-
-        return asyncQueue.run().map((): any => ({ canceled: false }));
     }
 }
