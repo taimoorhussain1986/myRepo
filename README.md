@@ -1,5 +1,26 @@
 # D365 Store Commerce – Margin Calculation Extension
 
+---
+
+> ## 🚨 STILL GETTING `BlankOperationHandler / operationId: 915` ERROR?
+>
+> **Root cause:** You configured the HQ button as **"Blank operation" + action number 50001**.
+> In Store Commerce SDK 9.55, that combination **always fires op 915 — not op 50001.**
+> Setting the action number to 50001 has no effect on which operation runs.
+>
+> **How to fix it — 4 steps:**
+>
+> | Step | Where | What to do |
+> |---|---|---|
+> | **1** | **HQ → Retail and Commerce → Channel setup → POS setup → POS operations** | Click **New** → Operation ID = `50001`, Name = `Margin Calculation`, Enable always = ✔ → **Save** |
+> | **2** | **HQ → Distribution schedule** | Run job **1090 – Registers** → Run now → wait for green tick |
+> | **3** | **HQ → Button grids → your grid → Button layout designer → your Margin button** | Change **Action** from `"Blank operation"` → `"Operation"` → pick `Margin Calculation` from the lookup → verify Operation number = `50001` → Save |
+> | **4** | **Store Commerce** | Settings → Database → Synchronize → then Exit Store Commerce fully from task tray → Relaunch |
+>
+> After step 4, clicking the Margin button will no longer show `BlankOperationHandler`.
+
+---
+
 > **Scenario:** A custom **"Margin"** button appears on the Sales Order (Cart/Transaction) screen toolbar. When a cashier selects a sales line and clicks the button, the system calls a D365 F&O real-time service to retrieve `InventTableModule.Price` (purchase price), then displays a colour-coded margin card in a new custom view.
 >
 > **Margin formula:**
