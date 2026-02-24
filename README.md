@@ -461,12 +461,86 @@ Store Commerce (POS)
 
 ## Troubleshooting
 
+### 🔴 Still getting `BlankOperationHandler / string_29838` after copying JS files?
+
+The error `operationId: 915 / operationName: "Blank operation"` in the event log means **one thing with certainty**: the Store Commerce button is still firing the built-in Blank Operation (ID 915). Our manifest and JS files are irrelevant until the button in HQ points to **50001**.
+
+Follow this exact sequence to verify and fix:
+
+---
+
+#### Diagnostic: Confirm what operation your button is actually set to
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → Button grids**
+2. Open the button grid that contains your Margin button (the one in the Discount panel)
+3. Click **Button layout designer**
+4. Click your **Margin button** to select it
+5. Look at the button properties panel on the right:
+   - **Action** field — what does it say?
+   - **Operation number** field — what number is shown?
+
+> **If Action = "Blank operation" and/or Operation number = 915:**  
+> Your button is set to the wrong operation. Follow the fix below.
+
+> **If Action = "Operation" and Operation number = 50001:**  
+> HQ is correct. The issue is job 1090 hasn't distributed to the store yet — jump to "Force sync" below.
+
+---
+
+#### Fix: Change the button from op 915 to op 50001
+
+> **Before you start:** Make sure op 50001 exists in POS Operations. If it doesn't, the Operation name dropdown won't show "Margin Calculation" and you cannot set op 50001.
+
+**Part A – Register op 50001 in POS Operations (if not done yet)**
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → POS operations**
+2. Check if a row with **Operation ID = 50001** already exists
+3. If **not**, click **New** and enter:
+   - Operation ID: `50001`
+   - Operation name: `Margin Calculation`
+   - Enable always: ✔
+4. **Save**
+
+**Part B – Update the button**
+
+1. Go to **Retail and Commerce → Channel setup → POS setup → Button grids**
+2. Open your grid → click **Button layout designer**
+3. Click the **Margin button** (currently set to Blank operation / 915)
+4. In the properties panel:
+   - **Action** → change to **`Operation`** (NOT "Blank operation" — they look similar but are different)
+   - **Operation name** → click the lookup → select **`Margin Calculation`**
+   - Verify **Operation number** field auto-fills to **`50001`**
+5. Click **OK**
+6. **Save** the Button layout designer (close the window and confirm save)
+7. Save the Button grid record
+
+**Part C – Distribute to store and force sync**
+
+1. Go to **Retail and Commerce → Retail and Commerce IT → Distribution schedule**
+2. Run job **1090 – Registers** — click **Run now** and wait for it to complete
+3. Also run **1070 – Channel configuration**  
+4. In Store Commerce: **Settings → Database → Synchronize** (or sign out and sign back in)
+5. Close Store Commerce completely (task tray → Exit, wait 5 seconds)
+6. Relaunch Store Commerce
+
+After these steps, click Margin button again. The `BlankOperationHandler` error will be gone.
+
+---
+
+#### How to tell if it worked
+
+Open Store Commerce → Event Viewer (Windows). When Margin is clicked:
+- **Before fix:** `operationId: 915, operationName: "Blank operation"`
+- **After fix:** No `BlankOperationHandler` error; your `MarginCalculationOperation.ts` runs
+
+---
+
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| **`BlankOperationHandler` / `string_29838` / `runtimeInterceptorFailed`** | Button configured with **"Blank operation" (915)** in HQ instead of op 50001 | Go to HQ → POS Operations → register 50001 first; then Button Layout Designer → Action = "Operation" → pick "Margin Calculation" (50001). **Never** select the "Blank operation" entry from the Action dropdown |
-| **`BlankOperationHandler`** even with button set to 50001 | Compiled JS files not deployed — only `manifest.json` was copied | Copy `Operations/MarginCalculationOperation.js`, `Views/MarginCalculationView.js`, `Views/MarginCalculationView.html`, and `Messages/GetMarginCalculationResponse.js` from build output alongside the manifest |
-| Button does not appear | Extension package not loaded | Check `extensions.json` and Store Commerce logs |
+| **`BlankOperationHandler` / `string_29838` / `runtimeInterceptorFailed`** — `operationId: 915` | Button still set to **"Blank operation" (915)** in Button Layout Designer | See full diagnostic above — change button Action to "Operation", pick "Margin Calculation" (50001), run job 1090, force sync, restart Store Commerce |
+| **`BlankOperationHandler`** with `operationId: 50001` | Compiled JS files not deployed alongside `manifest.json` | Copy `Operations/MarginCalculationOperation.js`, `Views/MarginCalculationView.js`, `Views/MarginCalculationView.html`, `Messages/GetMarginCalculationResponse.js` to Store Commerce Extensions folder |
+| Button does not appear on screen | Extension package not loaded or layout hasn't been distributed | Check `extensions.json`; run jobs 1090 + 1070; restart Store Commerce |
 | `MARGIN_REALTIME_ERROR` | X++ method not deployed / channel not connected to HQ | Deploy X++ changes; verify real-time service connectivity |
-| Purchase price = 0 | No `InventTableModule` row for Purch module | Verify item setup in D365 F&O under `Released products → Purchase → Price` |
+| Purchase price = 0 | No `InventTableModule` row for Purch module | Verify item setup in D365 F&O: `Released products → Purchase → Price` |
 | Margin always 0 % | `NetAmount` is 0 (no price on line) | Add a selling price to the product |
-| CRT DLL not found | Assembly not in `ext.config` | Add assembly reference and restart CSU / Retail Server |
+| CRT DLL not found | Assembly not registered | Add assembly to `commerceruntime.ext.config` and restart CSU |
