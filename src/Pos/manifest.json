@@ -126,11 +126,12 @@
           "name": "GetShippingDateClientRequestHandlerExt",
           "description": "GetShippingDateClientRequestHandlerExt",
           "modulePath": "Handlers/GetShippingDateClientRequestHandlerExt"
-        },
+        }
+      ],
+      "operations": [
         {
-          "name": "MarginCalculationOperation",
-          "description": "MarginCalculationOperation",
-          "modulePath": "Operations/MarginCalculationOperation"
+          "operationId": 50001,
+          "operationRequestHandlerPath": "Operations/MarginCalculationOperation"
         }
       ]
     },
