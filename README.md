@@ -17,7 +17,8 @@
 > |---|---|
 > | `MarginCalculationOperation.js` | `Store Commerce\Extensions\Beaumont.Commerce\Operations\` |
 > | `MarginCalculationView.js` + `.html` | `Store Commerce\Extensions\Beaumont.Commerce\Views\` |
-> | `GetMarginCalculationRequest.js` + `GetMarginCalculationResponse.js` | `Store Commerce\Extensions\Beaumont.Commerce\Messages\` |
+> | `GetMarginCalculationResponse.js` | `Store Commerce\Extensions\Beaumont.Commerce\Messages\` |
+> | `GetMarginCalculationRequest.js` | ❌ **Not needed for Phase 1** — not imported at runtime (only needed in Phase 2 when CRT proxy call is wired in) |
 > | `manifest.json` | `Store Commerce\Extensions\Beaumont.Commerce\` ← **root of the extension folder, no POS subfolder!** |
 > | `BT.CommerceRuntime.dll` | `Commerce Scale Unit\Extensions\` (CSU side only) |
 >
