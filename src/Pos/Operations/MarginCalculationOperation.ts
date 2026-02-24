@@ -8,28 +8,52 @@
 // ----------------------------------------------------------------------------
 
 import { ExtensionOperationRequestHandlerBase, ExtensionOperationRequestType } from "PosApi/Create/Operations";
-import { ClientEntities } from "PosApi/Entities";
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
+
+// ---------------------------------------------------------------------------
+// SDK 9.55: ExtensionOperationRequestHandlerBase<T> is generic.
+// ExtensionOperationRequestType<T> is a constructor-type alias (not a class) —
+// it cannot be instantiated with `new`.  supportedRequestType() must return
+// the REQUEST CLASS CONSTRUCTOR (typeof MarginCalculationRequest), not an instance.
+// ---------------------------------------------------------------------------
+
+/**
+ * Minimal request class for custom operation 50001.
+ * The shape (operationId + operationOptions) satisfies the SDK generic constraint.
+ */
+export class MarginCalculationRequest {
+    public readonly operationId: number = 50001;
+    public readonly operationOptions: any = {};
+    public readonly correlationId: string;
+    constructor(correlationId: string) {
+        this.correlationId = correlationId;
+    }
+}
 
 /**
  * POS Operation handler for Margin Calculation (Operation ID: 50001).
+ * Registered in manifest.json under requestHandlers.
+ * Button added in HQ: Screen Layout Designer → Button Grid → blank Action → Operation 50001.
  */
-export default class MarginCalculationOperation extends ExtensionOperationRequestHandlerBase {
+export default class MarginCalculationOperation extends ExtensionOperationRequestHandlerBase<MarginCalculationRequest> {
 
-    /** Return the request type this handler supports. */
-    public supportedRequestType(): ExtensionOperationRequestType {
-        return new ExtensionOperationRequestType(50001);
+    /**
+     * Returns the request CLASS CONSTRUCTOR (not an instance).
+     * SDK resolves the constructor type as ExtensionOperationRequestType<T>.
+     */
+    public supportedRequestType(): ExtensionOperationRequestType<MarginCalculationRequest> {
+        return MarginCalculationRequest as any;
     }
 
     /**
      * Called by the POS runtime when operation 50001 fires.
-     * context: ExtensionOperationRequestHandlerBase.IContext
-     * request: the extension operation request carrying IOperationOptions
+     * context — typed as any: SDK 9.55 provides IExtensionOperationHandlerContext
+     *           which is a separate export (not a namespace member of the base class).
      */
     public executeAsync(
-        context: ExtensionOperationRequestHandlerBase.IContext,
-        request: ClientEntities.ExtensionOperationRequest<ClientEntities.IOperationOptions>
-    ): Promise<ClientEntities.ICancelableDataResult<void>> {
+        context: any,
+        request: MarginCalculationRequest
+    ): Promise<{ canceled: boolean; data: void; }> {
 
         // -----------------------------------------------------------------------
         // Step 1: Read the current cart via the POS runtime.
@@ -40,8 +64,8 @@ export default class MarginCalculationOperation extends ExtensionOperationReques
             // No product line in the transaction — show a message and cancel.
             return (context as any).messageDialogHelper
                 .showMessage("Please select a product line before calculating margin.")
-                .then((): ClientEntities.ICancelableDataResult<void> => {
-                    return { canceled: true, data: undefined };
+                .then((): { canceled: boolean; data: void; } => {
+                    return { canceled: true, data: undefined as any };
                 });
         }
 

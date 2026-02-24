@@ -12,14 +12,20 @@
 // Companion template: MarginCalculationView.html
 // ----------------------------------------------------------------------------
 
-import { ViewBase } from "PosApi/Create/Views";
+// ---------------------------------------------------------------------------
+// SDK 9.55: PosApi/Create/Views exports CustomViewControllerBase<TState>, NOT ViewBase.
+// CustomViewControllerBase provides this.context (ICustomViewControllerContext)
+// which exposes this.context.navigator.navigateBack().
+// ---------------------------------------------------------------------------
+
+import { CustomViewControllerBase, ICustomViewControllerContext } from "PosApi/Create/Views";
 import ko = require("knockout");
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * View controller for the Margin Calculation custom view.
  */
-export default class MarginCalculationView extends ViewBase {
+export default class MarginCalculationView extends CustomViewControllerBase<IMarginCalculationResult> {
 
     // -----------------------------------------------------------------------
     // Knockout observable properties — use ko.observable<T>() initialisers
@@ -52,11 +58,12 @@ export default class MarginCalculationView extends ViewBase {
     // -----------------------------------------------------------------------
 
     /**
-     * @param context  PosApi view context (provided by the POS runtime).
+     * @param context  PosApi view context — provided by CustomViewControllerBase.
+     *                 Exposes context.navigator.navigateBack() etc.
      * @param state    Navigation data passed by MarginCalculationOperation
      *                 as { data: IMarginCalculationResult }.
      */
-    constructor(context: ViewBase.IViewContext, state?: any) {
+    constructor(context: ICustomViewControllerContext, state?: any) {
         super(context);
 
         // Guard: fall back to zeros if navigation data is missing or malformed.
@@ -110,6 +117,7 @@ export default class MarginCalculationView extends ViewBase {
      * Bound to the Close button in MarginCalculationView.html.
      */
     public onClose(): void {
+        // CustomViewControllerBase provides this.context as a protected property.
         this.context.navigator.navigateBack();
     }
 }
