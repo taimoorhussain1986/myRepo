@@ -200,10 +200,26 @@ C:\Program Files\Microsoft Dynamics 365\10.0\Store Commerce\Extensions\
 
 Alternatively, if you prefer **manual copy** (quicker for development iterations):
 
-1. From `BT.POS\bin\Debug\` (or wherever the SDK outputs the compiled extension files), copy:
-   - `Extensions\` folder contents into:  
-     `C:\Program Files\Microsoft Dynamics 365\10.0\Store Commerce\Extensions\`
-2. Restart Store Commerce.
+> ⚠️ **Copying ONLY the manifest.json is not enough.**  
+> You must also copy the compiled JS/HTML files. The manifest tells Store Commerce which  
+> modules to load — if those modules don't exist on disk, the operation falls back to the  
+> built-in `BlankOperationHandler` (error code `string_29838`).
+
+After a successful build, copy these files:
+
+| Source (after build) | Destination under `C:\Program Files\Microsoft Dynamics 365\10.0\Store Commerce\Extensions\Beaumont.Commerce\POS\` |
+|---|---|
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Operations\MarginCalculationOperation.js` | `Operations\` |
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Views\MarginCalculationView.js` | `Views\` |
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Views\MarginCalculationView.html` | `Views\` |
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Messages\GetMarginCalculationResponse.js` | `Messages\` |
+| Your merged `manifest.json` | root of `POS\` folder |
+
+> **Note:** The exact output path may vary. Look inside `BT.POS\bin\Debug\` or  
+> `BT.POS\obj\Debug\` for the compiled `.js` files after a successful build.  
+> Create the `Operations\`, `Views\`, and `Messages\` subfolders if they don't exist.
+
+Restart Store Commerce after copying (close from task tray → relaunch).
 
 ---
 
@@ -276,25 +292,28 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
 
 #### 4c – Step-by-step: add the Margin button to the Discount section
 
-> **About the blank/empty option in the Action dropdown**
+> ---
+> ### ⚠️ CRITICAL: "Blank operation" (915) vs. Custom Operation (50001)
 >
-> In the Button Layout Designer you will see an Action dropdown with entries like:
-> `(blank)`, `Operation`, `Open URL`, `Issue gift card`, etc.
+> The Button Layout Designer Action dropdown contains an entry called **"Blank operation"**.
+> **Do NOT select this.** It maps to the built-in operation ID **915** which will always throw:
+> ```
+> BlankOperationHandler.execute — string_29838 — runtimeInterceptorFailed
+> ```
+> even if your manifest is correct.
 >
-> **Yes — select the blank/empty entry.** The blank action is the correct choice for a
-> **custom operation** in Retail SDK 7.2.x.  
-> When you select it, an **Operation number** field appears — enter **`50001`** there.  
-> That is all that is needed; no separate "Custom operation" label exists in this SDK version.
+> **The only reliable way to fire operation 50001** is:
+> 1. Register 50001 in POS Operations first (Step 0 below — **not optional**)
+> 2. In Button Layout Designer → Action = **"Operation"** → pick **"Margin Calculation"** from the list
 >
-> *Alternatively*, if your designer shows an `Operation` entry in the list and you have already
-> registered op 50001 in POS operations (Step 0), you can use that instead — both routes work.
+> ---
 
 ---
 
-**Step 0 – (Optional) Register operation 50001 in POS Operations**
+**Step 0 – ⚠️ REQUIRED: Register operation 50001 in POS Operations**
 
-> Skip this step if you are using the blank action approach described above.  
-> Only required if you want op 50001 to appear by name in the `Operation` picker.
+> **This step is mandatory.** Without it, operation 50001 is unknown to HQ and the button
+> cannot be correctly configured. Do this before opening Button Layout Designer.
 
 1. Go to **Retail and Commerce → Channel setup → POS setup → POS operations**
 2. Click **New**
@@ -305,6 +324,7 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
    | **Operation name** | `Margin Calculation` |
    | **Enable always** | ✔ Tick |
 4. Click **Save**
+5. Run distribution job **1090 – Registers** after saving
 
 ---
 
@@ -328,12 +348,17 @@ When you open your Screen Layout in HQ you see **two designer buttons** in the A
    | Field | Value |
    |---|---|
    | **Text on button** | `Margin` |
-   | **Action** | **`(blank / empty)`** — select the blank entry at the top of the dropdown |
-   | **Operation number** | **`50001`** — type this into the field that appears after selecting blank |
+   | **Action** | **`Operation`** — select "Operation" from the dropdown (NOT "Blank operation") |
+   | **Operation name** | **`Margin Calculation`** — select from the list (appears after Step 0 is done) |
    | **Font size** | *(match surrounding buttons or leave default)* |
    | **Button color** | *(optional)* |
-6. Click **OK** / **Save** on the button properties
-7. **Save** the Button layout designer
+6. Confirm the **Operation number** shows **50001** (read-only, filled automatically)
+7. Click **OK** / **Save** on the button properties
+8. **Save** the Button layout designer
+
+> **If "Margin Calculation" doesn't appear** in the Operation name list:
+> - You haven't completed Step 0 yet — register op 50001 in POS Operations first
+> - Run job 1090 and refresh the Button Layout Designer
 
 ---
 
@@ -421,6 +446,8 @@ Store Commerce (POS)
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
+| **`BlankOperationHandler` / `string_29838` / `runtimeInterceptorFailed`** | Button configured with **"Blank operation" (915)** in HQ instead of op 50001 | Go to HQ → POS Operations → register 50001 first; then Button Layout Designer → Action = "Operation" → pick "Margin Calculation" (50001). **Never** select the "Blank operation" entry from the Action dropdown |
+| **`BlankOperationHandler`** even with button set to 50001 | Compiled JS files not deployed — only `manifest.json` was copied | Copy `Operations/MarginCalculationOperation.js`, `Views/MarginCalculationView.js`, `Views/MarginCalculationView.html`, and `Messages/GetMarginCalculationResponse.js` from build output alongside the manifest |
 | Button does not appear | Extension package not loaded | Check `extensions.json` and Store Commerce logs |
 | `MARGIN_REALTIME_ERROR` | X++ method not deployed / channel not connected to HQ | Deploy X++ changes; verify real-time service connectivity |
 | Purchase price = 0 | No `InventTableModule` row for Purch module | Verify item setup in D365 F&O under `Released products → Purchase → Price` |
