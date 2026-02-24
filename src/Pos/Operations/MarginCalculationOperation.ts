@@ -8,25 +8,32 @@
 // ----------------------------------------------------------------------------
 
 import { ExtensionOperationRequestHandlerBase, ExtensionOperationRequestType } from "PosApi/Create/Operations";
+import { ClientEntities } from "PosApi/Entities";
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 // ---------------------------------------------------------------------------
-// SDK 9.55: ExtensionOperationRequestHandlerBase<T> is generic.
-// ExtensionOperationRequestType<T> is a constructor-type alias (not a class) —
-// it cannot be instantiated with `new`.  supportedRequestType() must return
-// the REQUEST CLASS CONSTRUCTOR (typeof MarginCalculationRequest), not an instance.
+// SDK 9.55:
+//   ExtensionOperationRequestHandlerBase<T extends Response>
+//   T must satisfy `extends Response`, i.e. it must have _responseId / responseId.
+//   ClientEntities.ExtensionOperationRequest<TOptions> already extends Response,
+//   so we derive our request from it.
+//
+//   executeAsync(request: T) — single parameter; context comes via request.context.
+//
+//   supportedRequestType() must return the CLASS CONSTRUCTOR (not `new ...`).
 // ---------------------------------------------------------------------------
 
 /**
- * Minimal request class for custom operation 50001.
- * The shape (operationId + operationOptions) satisfies the SDK generic constraint.
+ * Typed request for custom operation 50001.
+ * Extending ClientEntities.ExtensionOperationRequest<IOperationOptions>
+ * satisfies the `T extends Response` constraint on
+ * ExtensionOperationRequestHandlerBase<T>.
  */
-export class MarginCalculationRequest {
-    public readonly operationId: number = 50001;
-    public readonly operationOptions: any = {};
-    public readonly correlationId: string;
-    constructor(correlationId: string) {
-        this.correlationId = correlationId;
+export class MarginCalculationRequest
+    extends ClientEntities.ExtensionOperationRequest<ClientEntities.IOperationOptions> {
+
+    constructor(correlationId: string, options: ClientEntities.IOperationOptions) {
+        super(50001, correlationId, options);
     }
 }
 
@@ -35,68 +42,65 @@ export class MarginCalculationRequest {
  * Registered in manifest.json under requestHandlers.
  * Button added in HQ: Screen Layout Designer → Button Grid → blank Action → Operation 50001.
  */
-export default class MarginCalculationOperation extends ExtensionOperationRequestHandlerBase<MarginCalculationRequest> {
+export default class MarginCalculationOperation
+    extends ExtensionOperationRequestHandlerBase<MarginCalculationRequest> {
 
     /**
-     * Returns the request CLASS CONSTRUCTOR (not an instance).
-     * SDK resolves the constructor type as ExtensionOperationRequestType<T>.
+     * Returns the request CLASS CONSTRUCTOR.
+     * SDK resolves it as ExtensionOperationRequestType<T>.
      */
     public supportedRequestType(): ExtensionOperationRequestType<MarginCalculationRequest> {
-        return MarginCalculationRequest as any;
+        return MarginCalculationRequest;
     }
 
     /**
      * Called by the POS runtime when operation 50001 fires.
-     * context — typed as any: SDK 9.55 provides IExtensionOperationHandlerContext
-     *           which is a separate export (not a namespace member of the base class).
+     * In SDK 9.55 the handler receives a SINGLE request parameter;
+     * the execution context is accessed via request.context.
      */
     public executeAsync(
-        context: any,
         request: MarginCalculationRequest
-    ): Promise<{ canceled: boolean; data: void; }> {
+    ): Promise<ClientEntities.ICancelableDataResult<void>> {
+
+        let context: any = (request as any).context;
 
         // -----------------------------------------------------------------------
-        // Step 1: Read the current cart via the POS runtime.
+        // Step 1: Read the current transaction (cart) via the context.
         // -----------------------------------------------------------------------
-        let cart: any = (context as any).currentTransaction;
+        let cart: any = context && context.currentTransaction
+            ? context.currentTransaction
+            : null;
 
         if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-            // No product line in the transaction — show a message and cancel.
-            return (context as any).messageDialogHelper
-                .showMessage("Please select a product line before calculating margin.")
-                .then((): { canceled: boolean; data: void; } => {
-                    return { canceled: true, data: undefined as any };
-                });
+            return Promise.resolve({ canceled: true, data: undefined });
         }
 
-        // Use the first cart line (or the selected line if your SDK exposes it).
+        // Use the first cart line — swap in your line-selection logic if needed.
         let cartLine: any = cart.CartLines[0];
 
-        let itemId: string    = cartLine.ItemId    || "";
-        let quantity: number  = cartLine.Quantity  || 0;
+        let itemId: string    = cartLine.ItemId   || "";
+        let quantity: number  = cartLine.Quantity || 0;
         // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
         let netAmount: number = cartLine.NetAmountWithAllInclusiveTax
                              || cartLine.NetAmount
                              || 0;
 
         // -----------------------------------------------------------------------
-        // Step 2: Retrieve purchase price from CRT via the real-time service.
+        // Step 2: Retrieve purchase price from CRT via real-time service.
         //
-        // Once the D365 F&O real-time service method (ContosoGetItemPurchasePrice)
-        // is deployed and the BT.ScaleUnit proxy is regenerated, replace the
-        // placeholder block below with the generated proxy call, e.g.:
+        // Once ContosoGetItemPurchasePrice (X++) is deployed and the
+        // BT.ScaleUnit proxy regenerated, replace the block below with the
+        // generated proxy call, e.g.:
         //
-        //   let dataServiceManager: any = new (context as any).dataServiceHandlerFactory
-        //       .create("MarginCalculationDataService");
-        //   return dataServiceManager.getItemPurchasePrice(itemId)
-        //       .then((priceResponse: any) => {
-        //           let purchasePrice: number = priceResponse.purchasePrice || 0;
-        //           ... compute margin ...
-        //           (context as any).navigator.navigate("MarginCalculationView", { data: marginResult });
-        //           return { canceled: false, data: undefined };
-        //       });
+        //   let dataService: any = context.runtime.executeAsync(
+        //       new GetMarginCalculationRequest(itemId, quantity, netAmount));
+        //   return dataService.then((resp: any) => {
+        //       let result = resp.data;
+        //       context.navigator.navigate("MarginCalculationView", { data: result });
+        //       return { canceled: false, data: undefined };
+        //   });
         //
-        // Until the CRT service is deployed, purchasePrice defaults to 0.
+        // Until CRT is deployed, purchasePrice is 0 so you can verify the view.
         // -----------------------------------------------------------------------
         let purchasePrice: number = 0;
 
@@ -117,9 +121,11 @@ export default class MarginCalculationOperation extends ExtensionOperationReques
         };
 
         // -----------------------------------------------------------------------
-        // Step 3: Navigate to the custom Margin Calculation view.
+        // Step 3: Navigate to the custom view.
         // -----------------------------------------------------------------------
-        (context as any).navigator.navigate("MarginCalculationView", { data: marginResult });
+        if (context && context.navigator) {
+            context.navigator.navigate("MarginCalculationView", { data: marginResult });
+        }
 
         return Promise.resolve({ canceled: false, data: undefined });
     }
