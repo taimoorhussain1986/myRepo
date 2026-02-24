@@ -15,11 +15,13 @@
 >
 > | What to deploy | Where |
 > |---|---|
-> | `MarginCalculationOperation.js` | `Store Commerce\Extensions\Beaumont.Commerce\POS\Operations\` |
-> | `MarginCalculationView.js` + `.html` | `Store Commerce\Extensions\Beaumont.Commerce\POS\Views\` |
-> | `GetMarginCalculationRequest.js` + `GetMarginCalculationResponse.js` | `Store Commerce\Extensions\Beaumont.Commerce\POS\Messages\` |
-> | `manifest.json` | `Store Commerce\Extensions\Beaumont.Commerce\POS\` |
+> | `MarginCalculationOperation.js` | `Store Commerce\Extensions\Beaumont.Commerce\Operations\` |
+> | `MarginCalculationView.js` + `.html` | `Store Commerce\Extensions\Beaumont.Commerce\Views\` |
+> | `GetMarginCalculationRequest.js` + `GetMarginCalculationResponse.js` | `Store Commerce\Extensions\Beaumont.Commerce\Messages\` |
+> | `manifest.json` | `Store Commerce\Extensions\Beaumont.Commerce\` ← **root of the extension folder, no POS subfolder!** |
 > | `BT.CommerceRuntime.dll` | `Commerce Scale Unit\Extensions\` (CSU side only) |
+>
+> ⚠️ **There is NO `POS\` subfolder!** Files go directly under `\Beaumont.Commerce\`, not under `\Beaumont.Commerce\POS\`.
 >
 > `BT.POS.dll` is generated during build and is used **only by the SDK proxy generator** (it inspects it to produce TypeScript proxies). Store Commerce never reads it.
 
@@ -224,17 +226,34 @@ Alternatively, if you prefer **manual copy** (quicker for development iterations
 
 After a successful build, copy these files:
 
-| Source (after build) | Destination under `C:\Program Files\Microsoft Dynamics 365\10.0\Store Commerce\Extensions\Beaumont.Commerce\POS\` |
-|---|---|
-| `BT.POS\bin\Debug\netstandard2.0\Extensions\Operations\MarginCalculationOperation.js` | `Operations\` |
-| `BT.POS\bin\Debug\netstandard2.0\Extensions\Views\MarginCalculationView.js` | `Views\` |
-| `BT.POS\bin\Debug\netstandard2.0\Extensions\Views\MarginCalculationView.html` | `Views\` |
-| `BT.POS\bin\Debug\netstandard2.0\Extensions\Messages\GetMarginCalculationResponse.js` | `Messages\` |
-| Your merged `manifest.json` | root of `POS\` folder |
+> ### ⚠️ IMPORTANT: No `POS\` subfolder!
+>
+> Store Commerce expects the extension files **directly under `\Extensions\Beaumont.Commerce\`**.
+> Do **NOT** create a `POS\` subfolder.
+> If you previously copied to `\Beaumont.Commerce\POS\`, delete those files and copy again to the correct location.
 
-> **Note:** The exact output path may vary. Look inside `BT.POS\bin\Debug\` or  
-> `BT.POS\obj\Debug\` for the compiled `.js` files after a successful build.  
-> Create the `Operations\`, `Views\`, and `Messages\` subfolders if they don't exist.
+| Source (after build) | Destination: `C:\Program Files\Microsoft Dynamics 365\10.0\Store Commerce\Extensions\Beaumont.Commerce\` |
+|---|---|
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Operations\MarginCalculationOperation.js` | `Operations\MarginCalculationOperation.js` |
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Views\MarginCalculationView.js` | `Views\MarginCalculationView.js` |
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Views\MarginCalculationView.html` | `Views\MarginCalculationView.html` |
+| `BT.POS\bin\Debug\netstandard2.0\Extensions\Messages\GetMarginCalculationResponse.js` | `Messages\GetMarginCalculationResponse.js` |
+| Your merged `manifest.json` | `manifest.json` (root — NOT in `POS\`) |
+
+The final deployed structure must look like this:
+```
+C:\Program Files\Microsoft Dynamics 365\10.0\Store Commerce\Extensions\
+    Beaumont.Commerce\
+        manifest.json                   <- here, NOT in \POS\
+        Operations\
+            MarginCalculationOperation.js
+        Views\
+            MarginCalculationView.js
+            MarginCalculationView.html
+        Messages\
+            GetMarginCalculationResponse.js
+        (... plus your existing BT.POS compiled files)
+```
 
 Restart Store Commerce after copying (close from task tray → relaunch).
 
