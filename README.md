@@ -8,6 +8,23 @@
 
 ---
 
+> ### ❓ Do I need to copy `BT.POS.dll` to Store Commerce?
+>
+> **No.** `BT.POS` is a TypeScript project — the build output is plain **JavaScript (`.js`) files**, not a DLL.
+> Store Commerce loads `.js` + `.html` files from its `Extensions` folder. It never loads `BT.POS.dll`.
+>
+> | What to deploy | Where |
+> |---|---|
+> | `MarginCalculationOperation.js` | `Store Commerce\Extensions\Beaumont.Commerce\POS\Operations\` |
+> | `MarginCalculationView.js` + `.html` | `Store Commerce\Extensions\Beaumont.Commerce\POS\Views\` |
+> | `GetMarginCalculationRequest.js` + `GetMarginCalculationResponse.js` | `Store Commerce\Extensions\Beaumont.Commerce\POS\Messages\` |
+> | `manifest.json` | `Store Commerce\Extensions\Beaumont.Commerce\POS\` |
+> | `BT.CommerceRuntime.dll` | `Commerce Scale Unit\Extensions\` (CSU side only) |
+>
+> `BT.POS.dll` is generated during build and is used **only by the SDK proxy generator** (it inspects it to produce TypeScript proxies). Store Commerce never reads it.
+
+---
+
 ## Repository layout
 
 Files are organised to **drop directly into your existing BT.ScaleUnit solution** — no new projects needed.
