@@ -89,14 +89,32 @@ The TypeScript files go **directly inside your existing `BT.POS` project** — n
 
 Open your existing `BT.POS\manifest.json` and add the following entries:
 
-**a) In `components.extend.requestHandlers` — add:**
+**a) Add a new `operations` array inside `components.extend` (NOT inside `requestHandlers`):**
+
 ```json
-{
-  "name": "MarginCalculationOperation",
-  "description": "MarginCalculationOperation",
-  "modulePath": "Operations/MarginCalculationOperation"
-}
+"operations": [
+  {
+    "operationId": 50001,
+    "operationRequestHandlerPath": "Operations/MarginCalculationOperation"
+  }
+]
 ```
+
+> ⚠️ **VS "property name is not allowed by the schema" warning on `operations`**
+>
+> This is a **cosmetic VS IntelliSense-only warning** caused by the local
+> `devDependencies/schemas/manifestSchema.json` being an older version that
+> pre-dates the `operations` key.  
+> **The Store Commerce 9.55 runtime fully supports `operations` and reads it
+> correctly at runtime.** This warning does NOT affect the build or deployment.  
+> You can safely ignore it, or suppress it by removing the `"$schema"` line from
+> your manifest (VS IntelliSense will stop validating against the local schema).
+>
+> **Do NOT put the operation handler in `requestHandlers`** — that category is
+> for data-pipeline request overrides (like `GetPickupDateClientRequestHandlerExt`).
+> Registering an operation handler there causes Store Commerce to route to the
+> built-in `BlankOperationHandler`, resulting in a `runtimeInterceptorFailed /
+> string_29838` runtime error.
 
 **b) In `components.create.views` — add:**
 ```json
