@@ -1,132 +1,117 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
-// Store Commerce App SDK (PosApi) — operation handler for custom op 50001.
-// Registered in manifest.json under requestHandlers.
-// Button is added to the button grid in HQ Screen Layout Designer:
-//   blank Action → Operation number 50001
-// ----------------------------------------------------------------------------
+// Commerce is a global ambient namespace loaded by the POS framework at runtime.
+// Declaring it as `any` here lets this file compile in isolation without the
+// full SDK type-definition tree.  Because this file has an `export`, this
+// declaration is MODULE-LOCAL and does not conflict with the global
+// `namespace Commerce` declared in the parent BT.POS project.
+declare var Commerce: any;
 
-import { ExtensionOperationRequestHandlerBase, ExtensionOperationRequestType } from "PosApi/Create/Operations";
-import { ClientEntities } from "PosApi/Entities";
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 // ---------------------------------------------------------------------------
-// SDK 9.55:
-//   ExtensionOperationRequestHandlerBase<T extends Response>
-//   T must satisfy `extends Response`, i.e. it must have _responseId / responseId.
-//   ClientEntities.ExtensionOperationRequest<TOptions> already extends Response,
-//   so we derive our request from it.
-//
-//   executeAsync(request: T) — single parameter; context comes via request.context.
-//
-//   supportedRequestType() must return the CLASS CONSTRUCTOR (not `new ...`).
+// `Commerce` is `any`, so property access on it is also `any`.
+// TypeScript 4.2+ allows a class to `extend` an expression typed as `any`.
 // ---------------------------------------------------------------------------
-
-/**
- * Typed request for custom operation 50001.
- * Extending ClientEntities.ExtensionOperationRequest<IOperationOptions>
- * satisfies the `T extends Response` constraint on
- * ExtensionOperationRequestHandlerBase<T>.
- */
-export class MarginCalculationRequest
-    extends ClientEntities.ExtensionOperationRequest<ClientEntities.IOperationOptions> {
-
-    constructor(correlationId: string, options: ClientEntities.IOperationOptions) {
-        super(50001, correlationId, options);
-    }
-}
+const _Base: any = Commerce.Operations.OperationHandlerBase;
 
 /**
  * POS Operation handler for Margin Calculation (Operation ID: 50001).
- * Registered in manifest.json under requestHandlers.
- * Button added in HQ: Screen Layout Designer → Button Grid → blank Action → Operation 50001.
+ *
+ * Registered in manifest.json under requestHandlers:
+ *   { "name": "MarginCalculationOperation",
+ *     "description": "Margin Calculation",
+ *     "modulePath": "Operations/MarginCalculationOperation" }
+ *
+ * Button added in HQ:
+ *   Screen Layout Designer → Button Grid → Configure → blank Action → Operation number 50001
  */
-export default class MarginCalculationOperation
-    extends ExtensionOperationRequestHandlerBase<MarginCalculationRequest> {
-
-    /**
-     * Returns the request CLASS CONSTRUCTOR.
-     * SDK resolves it as ExtensionOperationRequestType<T>.
-     */
-    public supportedRequestType(): ExtensionOperationRequestType<MarginCalculationRequest> {
-        return MarginCalculationRequest;
-    }
+export default class MarginCalculationOperation extends _Base {
 
     /**
      * Called by the POS runtime when operation 50001 fires.
-     * In SDK 9.55 the handler receives a SINGLE request parameter;
-     * the execution context is accessed via request.context.
+     * @param options  Runtime options passed by the button grid framework.
      */
-    public executeAsync(
-        request: MarginCalculationRequest
-    ): Promise<ClientEntities.ICancelableDataResult<void>> {
+    public executeAsync(options: any): any {
 
-        let context: any = (request as any).context;
+        let asyncQueue: any = new Commerce.AsyncQueue();
 
-        // -----------------------------------------------------------------------
-        // Step 1: Read the current transaction (cart) via the context.
-        // -----------------------------------------------------------------------
-        let cart: any = context && context.currentTransaction
-            ? context.currentTransaction
-            : null;
+        asyncQueue.enqueue((): any => {
 
-        if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-            return Promise.resolve({ canceled: true, data: undefined });
-        }
+            // ------------------------------------------------------------------
+            // Step 1 — Resolve the active cart and selected cart line.
+            // ------------------------------------------------------------------
+            let cart: any = Commerce.Session.instance.cart;
 
-        // Use the first cart line — swap in your line-selection logic if needed.
-        let cartLine: any = cart.CartLines[0];
+            if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
+                let errors: any[] = [
+                    new Commerce.Proxy.Entities.Error(
+                        "MARGIN_CALC_NO_LINE",
+                        false,
+                        "No sales line found. Please add a product to the transaction first."
+                    )
+                ];
+                return Commerce.NotificationHandler.displayClientErrors(errors)
+                    .map((): any => ({ canceled: true }));
+            }
 
-        let itemId: string    = cartLine.ItemId   || "";
-        let quantity: number  = cartLine.Quantity || 0;
-        // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
-        let netAmount: number = cartLine.NetAmountWithAllInclusiveTax
-                             || cartLine.NetAmount
-                             || 0;
+            // Prefer the currently-highlighted line; fall back to the first line.
+            let selectedId: string = cart.SelectedCartLineId || "";
+            let cartLine: any = cart.CartLines.filter(
+                (l: any) => l.LineId === selectedId
+            )[0] || cart.CartLines[0];
 
-        // -----------------------------------------------------------------------
-        // Step 2: Retrieve purchase price from CRT via real-time service.
-        //
-        // Once ContosoGetItemPurchasePrice (X++) is deployed and the
-        // BT.ScaleUnit proxy regenerated, replace the block below with the
-        // generated proxy call, e.g.:
-        //
-        //   let dataService: any = context.runtime.executeAsync(
-        //       new GetMarginCalculationRequest(itemId, quantity, netAmount));
-        //   return dataService.then((resp: any) => {
-        //       let result = resp.data;
-        //       context.navigator.navigate("MarginCalculationView", { data: result });
-        //       return { canceled: false, data: undefined };
-        //   });
-        //
-        // Until CRT is deployed, purchasePrice is 0 so you can verify the view.
-        // -----------------------------------------------------------------------
-        let purchasePrice: number = 0;
+            let itemId: string   = cartLine.ItemId   || "";
+            let quantity: number = cartLine.Quantity  || 0;
+            // NetAmountWithAllInclusiveTax is the revenue figure in the margin formula.
+            let netAmount: number = cartLine.NetAmountWithAllInclusiveTax
+                                 || cartLine.NetAmount
+                                 || 0;
 
-        let totalCost: number        = purchasePrice * Math.abs(quantity);
-        let marginAmount: number     = netAmount - totalCost;
-        let marginPercentage: number = netAmount !== 0
-            ? (marginAmount / netAmount) * 100
-            : 0;
+            // ------------------------------------------------------------------
+            // Step 2 — Retrieve purchase price from CRT via real-time service.
+            //
+            // PHASE 1 (current): purchasePrice is 0 so you can test the view
+            // end-to-end before the X++ real-time service is deployed.
+            //
+            // PHASE 2 (after deploying ContosoGetItemPurchasePrice X++ + CRT):
+            // The build will auto-generate a proxy entry in DataService/DataServiceRequests.g.ts.
+            // Replace the block below with:
+            //
+            //   let getMarginReq: any = new Commerce.Proxy.DataServiceRequests
+            //       .GetMarginCalculationRequest(itemId, quantity, netAmount);
+            //   return asyncQueue.runNext().run(getMarginReq)
+            //       .map((result: any) => {
+            //           Commerce.Host.instance.navigateToView("MarginCalculationView", result.data);
+            //           return { canceled: false };
+            //       });
+            // ------------------------------------------------------------------
+            let purchasePrice: number = 0;
 
-        let marginResult: IMarginCalculationResult = {
-            itemId:           itemId,
-            purchasePrice:    purchasePrice,
-            quantity:         quantity,
-            netAmount:        netAmount,
-            totalCost:        totalCost,
-            marginAmount:     marginAmount,
-            marginPercentage: marginPercentage
-        };
+            let totalCost: number        = purchasePrice * Math.abs(quantity);
+            let marginAmount: number     = netAmount - totalCost;
+            let marginPercentage: number = netAmount !== 0
+                ? (marginAmount / netAmount) * 100
+                : 0;
 
-        // -----------------------------------------------------------------------
-        // Step 3: Navigate to the custom view.
-        // -----------------------------------------------------------------------
-        if (context && context.navigator) {
-            context.navigator.navigate("MarginCalculationView", { data: marginResult });
-        }
+            let marginResult: IMarginCalculationResult = {
+                itemId:           itemId,
+                purchasePrice:    purchasePrice,
+                quantity:         quantity,
+                netAmount:        netAmount,
+                totalCost:        totalCost,
+                marginAmount:     marginAmount,
+                marginPercentage: marginPercentage
+            };
 
-        return Promise.resolve({ canceled: false, data: undefined });
+            // ------------------------------------------------------------------
+            // Step 3 — Navigate to the custom view, passing the margin data.
+            // ------------------------------------------------------------------
+            Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
+            return asyncQueue.runNext();
+        });
+
+        return asyncQueue.run().map((): any => ({ canceled: false }));
     }
 }
