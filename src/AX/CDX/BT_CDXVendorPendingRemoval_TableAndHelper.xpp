@@ -1,0 +1,145 @@
+// ============================================================================
+// BT_CDXVendorPendingRemoval  –  Table DDL (X++ documentation)
+// ============================================================================
+// Create this table in the AX2012 AOT under Data Dictionary > Tables.
+//
+// TABLE PROPERTIES
+// ----------------
+//   Name           : BT_CDXVendorPendingRemoval
+//   Label          : CDX Vendor Pending Removal
+//   Table Group    : Transaction
+//   Cache Size     : None
+//   Primary Index  : RecId (auto)
+//   Cluster Index  : RecId (auto)
+//
+// FIELDS
+// ------
+//   Field Name            EDTName / Type              Label
+//   --------------------  --------------------------  --------------------------------
+//   VendTableRecId        RefRecId (Int64)             Vendor RecId
+//   VendAccount           VendAccount (str)            Vendor Account
+//   RetailChannelRecId    RefRecId (Int64)             Retail Channel RecId
+//   OldApprovalStatus     BT_VendApprovalStatusId      Old Approval Status
+//   NewApprovalStatus     BT_VendApprovalStatusId      New Approval Status
+//   ChangedDateTime       TransDateTime (utcdatetime)  Changed Date/Time
+//   Processed             NoYesId (enum NoYes)         Processed
+//   ProcessedDateTime     TransDateTime (utcdatetime)  Processed Date/Time
+//
+// INDEXES
+// -------
+//   Name                   Fields                              AllowDuplicates
+//   ---------------------  ----------------------------------  ---------------
+//   VendChannelIdx         VendTableRecId, RetailChannelRecId  Yes
+//   UnprocessedIdx         Processed, RetailChannelRecId       Yes
+//
+// RELATIONS
+// ---------
+//   RetailChannelTable  (RetailChannelRecId → RetailChannelTable.RecId)
+//   VendTable           (VendTableRecId → VendTable.RecId)  [integrity only]
+//
+// SECURITY
+// --------
+//   Assign appropriate table permissions (TrustLevel, SecurityKey) per your
+//   AX2012 security model.
+// ============================================================================
+
+// ============================================================================
+// BT_CDXVendorPendingRemoval  –  Table Methods (add to table node in AOT)
+// ============================================================================
+
+// -------------------------  insert()  ----------------------------------------
+/// <summary>Insert override – sets Processed = No on new records.</summary>
+public void insert()
+{
+    this.Processed = NoYes::No;
+    super();
+}
+
+// -------------------------  markProcessed()  ---------------------------------
+/// <summary>
+/// Marks this record as processed and sets the processed timestamp.
+/// Call this after the CDX incremental run has handled the removal.
+/// </summary>
+public void markProcessed()
+{
+    ttsBegin;
+    this.Processed         = NoYes::Yes;
+    this.ProcessedDateTime = DateTimeUtil::utcNow();
+    this.update();
+    ttsCommit;
+}
+
+// ============================================================================
+// BT_CDXChannelExtRunHelper  –  Static helper called from CDX run() override
+// ============================================================================
+// Add this class to your AX2012 project.
+// ============================================================================
+
+class BT_CDXChannelExtRunHelper
+{
+}
+
+/// <summary>
+/// Processes pending-removal records for a given Retail channel during an
+/// incremental CDX run.
+///
+/// Adds the pending-vendor RecIds to ref2 so that the standard extraction step
+/// (i_VendTable) picks them up and re-syncs them to the EPOS channel.
+/// Because their current BT_VendApprovalStatusId is no longer 'BT Approved' /
+/// 'BT Preferred', the EPOS client can apply its own "hide non-approved vendor"
+/// logic on receipt.
+///
+/// If your EPOS client requires an explicit DELETE signal (rather than an
+/// updated record with non-approved status), replace the ref2 insert below
+/// with a call to RetailConnDatabaseUtility::deleteFromChannel().
+/// </summary>
+/// <param name="_channelRecId">RecId of the Retail channel being processed.</param>
+/// <param name="_ref2">
+///   Reference to the ref2 temporary table buffer used by
+///   RetailCDXChannelSpecificData_AX63 during this run.
+/// </param>
+public static void processRemovals(
+    RecId                       _channelRecId,
+    RetailCDXSeedDataWorkingTable _ref2)
+{
+    BT_CDXVendorPendingRemoval pending;
+    RetailCDXSeedDataWorkingTable ref2Ins;
+    TableId vendTableId = tableNum(VendTable);
+
+    // -----------------------------------------------------------------------
+    // Step 1: Add each unprocessed pending-removal vendor to ref2.
+    //         ref2 is the working table read by the CDX extraction step.
+    //         Adding the RecId here causes i_VendTable to re-sync that vendor
+    //         with its CURRENT field values (which now have non-approved status).
+    // -----------------------------------------------------------------------
+    while select pending
+        where pending.RetailChannelRecId == _channelRecId
+           && pending.Processed          == NoYes::No
+    {
+        // Avoid inserting duplicates that the d_VendTable methods may have
+        // already added (e.g., the vendor changed another field at the same
+        // time as the status change).
+        RetailCDXSeedDataWorkingTable existingRef2;
+        select firstonly existingRef2
+            where existingRef2.RefTableId == vendTableId
+               && existingRef2.RefRecId   == pending.VendTableRecId;
+
+        if (!existingRef2.RecId)
+        {
+            ref2Ins.clear();
+            ref2Ins.RefTableId = vendTableId;
+            ref2Ins.RefRecId   = pending.VendTableRecId;
+            ref2Ins.insert();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2: Mark all pending records for this channel as processed.
+    //         Use update_recordset for performance (one SQL statement).
+    // -----------------------------------------------------------------------
+    update_recordset pending
+        setting Processed         = NoYes::Yes,
+                ProcessedDateTime = DateTimeUtil::utcNow()
+        where pending.RetailChannelRecId == _channelRecId
+           && pending.Processed          == NoYes::No;
+}

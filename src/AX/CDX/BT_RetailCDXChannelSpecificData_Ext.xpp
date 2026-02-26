@@ -1,0 +1,77 @@
+// ============================================================================
+// BT_RetailCDXChannelSpecificData_Ext
+// ============================================================================
+// PURPOSE
+// -------
+// Extends the auto-generated RetailCDXChannelSpecificData_AX63 class to
+// process pending vendor-removal records during every incremental CDX run.
+//
+// WHY EXTEND INSTEAD OF MODIFY
+// -----------------------------
+// RetailCDXChannelSpecificData_AX63 is auto-generated from the Retail channel
+// schema XML.  Direct modifications are overwritten whenever the schema is
+// regenerated.  This extension class is safe to keep across regenerations.
+//
+// HOW TO REGISTER THIS EXTENSION
+// --------------------------------
+// Option A (recommended) – AOT subclass:
+//   1. In AOT > Classes, create BT_RetailCDXChannelSpecificData_Ext.
+//   2. Set "Extends" = RetailCDXChannelSpecificData_AX63.
+//   3. Override run() as shown below.
+//   4. In Retail > Setup > Retail scheduler > Channel profile, change the
+//      "Channel data class" field from RetailCDXChannelSpecificData_AX63
+//      to BT_RetailCDXChannelSpecificData_Ext.
+//
+// Option B – Modify the generated class's run() method (NOT recommended;
+//   safe only if you lock the generated file in version control and document
+//   that it must not be regenerated without re-applying this change).
+//
+// ============================================================================
+
+class BT_RetailCDXChannelSpecificData_Ext extends RetailCDXChannelSpecificData_AX63
+{
+    // No additional fields needed; all state is in the base class.
+}
+
+// ---------------------------------------------------------------------------
+// Override of run()
+// ---------------------------------------------------------------------------
+// Call super() first to execute all auto-generated d_VendTable_224/226 and
+// other d_* methods.  Then call processRemovals() to handle vendors that
+// changed status to non-approved after the last incremental run.
+// ---------------------------------------------------------------------------
+public void run()
+{
+    // -----------------------------------------------------------------------
+    // 1. Execute all auto-generated delta (d_*) methods.
+    //    This populates ref2 with approved/preferred vendors that changed.
+    // -----------------------------------------------------------------------
+    super();
+
+    // -----------------------------------------------------------------------
+    // 2. Add any pending-removal vendors to ref2.
+    //    These are vendors whose BT_VendApprovalStatusId changed FROM an
+    //    approved/preferred status to something else since the last run.
+    //    Adding them to ref2 causes the extraction step (i_VendTable) to
+    //    re-sync them with their current (non-approved) field values,
+    //    giving the EPOS client the signal to hide/remove them.
+    // -----------------------------------------------------------------------
+    BT_CDXChannelExtRunHelper::processRemovals(
+        this.parmChannelRecId(),    // RecId of the channel being processed
+        this.parmRef2());           // ref2 working table for this run
+}
+
+// ---------------------------------------------------------------------------
+// NOTE: parmChannelRecId() and parmRef2() are assumed to exist on the base
+// class (or a parm pattern).  In AX2012 RetailCDXChannelSpecificData_AX63
+// the channel RecId and ref2 buffer are typically stored as class-level
+// variables set during initialisation.  If the base class uses different
+// accessor names, replace the calls above with the correct field references,
+// for example:
+//
+//   BT_CDXChannelExtRunHelper::processRemovals(
+//       retailChannelTable.RecId,   // class-level variable in base class
+//       ref2);                       // class-level tmp-table variable
+//
+// Check the base class declaration to confirm field names.
+// ---------------------------------------------------------------------------

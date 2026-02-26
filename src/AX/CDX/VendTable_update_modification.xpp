@@ -1,0 +1,75 @@
+// ============================================================================
+// VendTable.update() modification – add to existing VendTable table class
+// ============================================================================
+// PURPOSE
+// -------
+// Intercepts VendTable updates and records a pending-removal entry when a
+// vendor's BT_VendApprovalStatusId changes FROM an approved/preferred status
+// to a non-approved status.
+//
+// HOW TO APPLY
+// ------------
+// In AOT > Data Dictionary > Tables > VendTable > Methods > update(),
+// add the following call AT THE END of the existing method, after super():
+//
+//   // BT Customisation: CDX vendor-approval change tracking.
+//   BT_CDXVendorApprovalChangeHandler::onVendTableUpdated(orig, this);
+//
+// Full method skeleton after modification:
+// ============================================================================
+
+// [In VendTable.update() – add the marked lines]
+public void update()
+{
+    VendTable orig;
+
+    // ---- EXISTING CODE: capture original before super() ------------------
+    // (This pattern is already present in most AX2012 VendTable overrides.
+    //  If orig is already captured elsewhere in the method, reuse that.)
+    select firstonly orig
+        where orig.RecId == this.RecId;
+    // ---- END EXISTING CODE -----------------------------------------------
+
+    super(); // Standard AX update logic
+
+    // ---- BT CUSTOMISATION: CDX approval-change tracking ------------------
+    // If the vendor's approval status changed FROM approved/preferred to
+    // something else, record a pending-removal entry so that the next CDX
+    // incremental run can re-sync this vendor (with non-approved status)
+    // to all active EPOS channels.
+    BT_CDXVendorApprovalChangeHandler::onVendTableUpdated(orig, this);
+    // ---- END BT CUSTOMISATION --------------------------------------------
+}
+
+// ============================================================================
+// IMPORTANT NOTES
+// ============================================================================
+//
+// 1. "orig" capture pattern
+//    If VendTable.update() already selects the original record for other
+//    customisations, reuse that buffer (do not select twice).
+//    A common pattern is:
+//
+//      VendTable origVendTable = VendTable::find(this.AccountNum);
+//
+//    Replace "orig" above with whatever buffer name is already in use.
+//
+// 2. Performance
+//    BT_CDXVendorApprovalChangeHandler::onVendTableUpdated() checks
+//    whether the status field actually changed before doing any DB work,
+//    so the overhead on updates that don't change the status is minimal
+//    (one field comparison + return).
+//
+// 3. Bulk updates via doUpdate() / update_recordset
+//    If any background process updates BT_VendApprovalStatusId via
+//    update_recordset or doUpdate() (which bypass the update() method),
+//    you must also call BT_CDXVendorApprovalChangeHandler manually in
+//    that code, or replace the bulk statement with a record-by-record loop
+//    wrapped in tts.
+//
+// 4. Delete scenario
+//    If a vendor is deleted entirely (VendTable.delete()), a similar
+//    pattern should be applied in VendTable.delete() using a dedicated
+//    delete handler.  Deletions are typically handled by the CDX schema's
+//    delete-tracking mechanism, but you should verify this for your schema.
+// ============================================================================
