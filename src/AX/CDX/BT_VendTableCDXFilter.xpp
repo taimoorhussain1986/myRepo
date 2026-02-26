@@ -1,0 +1,95 @@
+/// =============================================================================
+/// BT_VendTableCDXFilter.xpp
+/// =============================================================================
+/// PURPOSE
+/// -------
+/// Centralises the vendor-approval filter that controls which VendTable records
+/// are allowed to sync to the retail channel (EPOS) via CDX.
+///
+/// BACKGROUND
+/// ----------
+/// A custom field  VendTable.BT_VendApprovalStatus  (EDT: BT_VendApprovalStatus)
+/// references BT_VendApprovalStatusTable where statuses such as
+///   Approved  |  Preferred  |  NotApproved  |  OnHold
+/// are maintained.
+///
+/// The retail channel schema XML <Filter> clause applies this condition when
+/// CDX runs a FULL sync (2004 job, i_VendTable initialisation method).
+/// However, SQL Server Change Tracking — used by the INCREMENTAL sync
+/// (d_VendTable / delta method) — returns ALL changed primary keys with no
+/// regard for schema-level XML filters.  That is an AX2012 CDX architectural
+/// constraint: Change Tracking tracks row identity, not filtered projections.
+///
+/// FIX STRATEGY
+/// ------------
+/// Override the  d_VendTable  method in a CDX DataSet extension class and apply
+/// the same filter programmatically before the delta records are packaged.
+/// See  BT_RetailCDXDataSync_Extension.xpp  for the override.
+///
+/// This helper provides the approved-status set so the filter expression is
+/// maintained in exactly one place for both full-sync XML and delta override.
+///
+/// DEPLOYMENT
+/// ----------
+/// 1. Add both .xpp files to an AX2012 project in the BT_Retail or Beaumont
+///    model layer (e.g. USR or BUS layer).
+/// 2. Compile and full CIL-generate.
+/// 3. Run CDX job 2004 full sync once after deployment to establish a clean
+///    baseline; future incremental syncs will honour the filter.
+/// =============================================================================
+
+/// <summary>
+/// Helper class providing the vendor approval-status filter for CDX sync.
+/// </summary>
+class BT_VendTableCDXFilter
+{
+    /// <summary>
+    /// Returns the set of <c>BT_VendApprovalStatus</c> enum/config-key values
+    /// that are permitted to sync to the retail channel.
+    ///
+    /// Extend or modify this method to change the approval filter without
+    /// touching the CDX override class or the channel schema XML.
+    /// </summary>
+    /// <returns>
+    ///   A <c>container</c> of allowed BT_VendApprovalStatus values.
+    ///   Used by both the XML filter (documentation reference) and the
+    ///   d_VendTable delta override.
+    /// </returns>
+    public static container allowedStatuses()
+    {
+        // Return the integer / enum values that represent Approved and Preferred.
+        // Replace the literals below with your actual BT_VendApprovalStatus enum
+        // values, e.g.  BT_VendApprovalStatus::Approved.
+        //
+        // Example (adjust to match your enum definition):
+        //   return [BT_VendApprovalStatus::Approved, BT_VendApprovalStatus::Preferred];
+        //
+        // Using integer literals here so the file compiles without the enum
+        // import; replace with the real enum references once integrated.
+        return [1, 2]; // 1 = Approved, 2 = Preferred (adjust to your enum)
+    }
+
+    /// <summary>
+    /// Returns a query range value string for the allowed statuses,
+    /// suitable for use with  SysQuery::value()  or direct range.value() assignment.
+    ///
+    /// Example output:  "1,2"
+    /// </summary>
+    public static str allowedStatusRangeValue()
+    {
+        container   allowed = BT_VendTableCDXFilter::allowedStatuses();
+        str         rangeVal;
+        int         i;
+
+        for (i = 1; i <= conLen(allowed); i++)
+        {
+            if (rangeVal)
+            {
+                rangeVal += ',';
+            }
+            rangeVal += any2str(conPeek(allowed, i));
+        }
+
+        return rangeVal;
+    }
+}

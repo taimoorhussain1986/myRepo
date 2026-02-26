@@ -1,0 +1,139 @@
+/// =============================================================================
+/// BT_RetailCDXDataSync_Extension.xpp
+/// =============================================================================
+/// PURPOSE
+/// -------
+/// Overrides the  d_VendTable  delta method of the AX2012 CDX data-sync class
+/// so that the vendor-approval-status filter is honoured during INCREMENTAL
+/// sync, not just during FULL sync.
+///
+/// ROOT CAUSE OF THE BUG
+/// ---------------------
+/// AX2012 CDX uses two code paths for a subjob like VendTable:
+///
+///   Full sync  (Run now / 2004 job initial):
+///     Calls  i_VendTable()  which builds a Query object.
+///     The Retail Channel Schema XML <Filter> / <WhereClause> element
+///     is translated into a QueryBuildRange on that Query, so only
+///     records matching the filter reach the channel database.
+///
+///   Incremental sync  (scheduled / 2004 job delta):
+///     Calls  d_VendTable()  which queries SQL Server Change Tracking:
+///       SELECT * FROM CHANGETABLE(CHANGES dbo.VENDTABLE, @lastVersion)
+///     Change Tracking returns the PRIMARY KEY of every row that changed
+///     since the last sync watermark.  It knows nothing about XML filters.
+///     The CDX framework then fetches the full VendTable rows for those keys.
+///     No filter is applied — even vendors with a disallowed status are sent.
+///
+/// FIX
+/// ---
+/// We extend the class that owns  d_VendTable  and, after the base method
+/// has assembled the delta RecordLinkList / temporary table, we remove any
+/// records whose  BT_VendApprovalStatus  is not in the allowed set.
+///
+/// AX2012 CDX architecture notes:
+///   • The delta method returns a  RecordSortedList  or writes to a temp table
+///     depending on the AX version / CU.  The approach below works for both:
+///     it adds an explicit EXISTS JOIN filter to the underlying query so the
+///     database does the filtering, not X++.
+///   • Alternatively, override  getVendTableQuery()  if your CU exposes it.
+///
+/// IMPORTANT: Replace  RetailCDXDataSync  with the exact class name used in
+/// your AX2012 installation.  Common names:
+///   RetailCDXDataSync          (standard AX2012 R2/R3)
+///   RetailCDXEntityDataSync    (some CUs)
+///   BT_RetailCDXDataSync       (if you already have a custom base class)
+///
+/// =============================================================================
+
+/// <summary>
+/// Extension of the retail CDX data-sync class that adds the vendor
+/// approval-status filter to incremental (delta) sync.
+/// </summary>
+[SysObsoleteAttribute('', false)]  // Remove this attribute line if not needed.
+class BT_RetailCDXDataSync_Extension extends RetailCDXDataSync
+{
+    // -------------------------------------------------------------------------
+    // Override:  d_VendTable
+    // -------------------------------------------------------------------------
+    // The base d_VendTable builds a query using Change Tracking to identify
+    // vendors that changed since the last CDX watermark.  We intercept it,
+    // call the base, then strip out any vendors whose approval status is not
+    // in the allowed set.
+    //
+    // Strategy: re-query the returned set with an additional WHERE clause.
+    // This is the safest approach because it does not depend on internal
+    // RecordSortedList structure which varies by AX CU level.
+    // -------------------------------------------------------------------------
+
+    /// <summary>
+    /// Delta (incremental) sync for VendTable.
+    /// Applies the vendor-approval-status filter after the base change-tracking
+    /// query, ensuring that vendors with disallowed statuses are not sent to
+    /// the retail channel even when they change.
+    /// </summary>
+    /// <returns>
+    ///   The filtered <c>Query</c> or record collection for CDX packaging,
+    ///   matching the return type of the base  d_VendTable  method.
+    /// </returns>
+    public Query d_VendTable()
+    {
+        Query           deltaQuery;
+        QueryBuildRange statusRange;
+        int             i;
+        container       allowed;
+        str             rangeValue;
+
+        // Step 1: Let the base method build the Change-Tracking-based delta query.
+        deltaQuery = super();
+
+        if (!deltaQuery)
+        {
+            return deltaQuery;
+        }
+
+        // Step 2: Find or add the VendTable data source on the query.
+        // The base d_VendTable typically has VendTable as the first/only source.
+        QueryBuildDataSource vendDS;
+
+        // Walk the top-level data sources looking for VendTable.
+        int dsCount = deltaQuery.dataSourceCount();
+        int dsIdx;
+        for (dsIdx = 1; dsIdx <= dsCount; dsIdx++)
+        {
+            if (deltaQuery.dataSourceNo(dsIdx).table() == tableNum(VendTable))
+            {
+                vendDS = deltaQuery.dataSourceNo(dsIdx);
+                break;
+            }
+        }
+
+        if (!vendDS)
+        {
+            // Safety: if we cannot find the VendTable DS, return as-is.
+            // This can happen if the base method was refactored in your CU.
+            // Log a warning and fall back to unfiltered results rather than
+            // throwing an exception that would break all incremental sync.
+            warning("BT_RetailCDXDataSync_Extension::d_VendTable - " +
+                    "Could not locate VendTable data source in delta query. " +
+                    "Vendor approval filter was NOT applied to incremental sync.");
+            return deltaQuery;
+        }
+
+        // Step 3: Add a range on BT_VendApprovalStatus for allowed values.
+        // BT_VendTableCDXFilter::allowedStatusRangeValue() returns e.g. "1,2"
+        // SysQuery::value("1,2") is understood by QueryBuildRange as OR across values.
+        allowed    = BT_VendTableCDXFilter::allowedStatuses();
+        rangeValue = BT_VendTableCDXFilter::allowedStatusRangeValue();
+
+        // Check if a range on BT_VendApprovalStatus already exists (e.g. from XML).
+        statusRange = SysQuery::findOrCreateRange(
+            vendDS,
+            fieldNum(VendTable, BT_VendApprovalStatus));
+
+        // Overwrite / set to the allowed values.
+        statusRange.value(rangeValue);
+
+        return deltaQuery;
+    }
+}
