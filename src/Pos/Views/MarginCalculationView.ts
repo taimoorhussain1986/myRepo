@@ -9,7 +9,13 @@
 declare var Commerce: any;
 declare var ko: any;
 
-import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
+// `import type` is erased entirely at compile time (generates NO AMD dependency
+// in the define([...]) array).  A normal `import` would add
+// "../Messages/GetMarginCalculationResponse" as a runtime AMD dependency;
+// the Store Commerce AMD loader resolves relative IDs against the app
+// baseUrl — not the extension subfolder — so the file is never found and the
+// whole module silently fails to load (view not found, or blank screen).
+import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * View controller for the Margin Calculation custom view.

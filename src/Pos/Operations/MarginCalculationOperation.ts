@@ -8,7 +8,13 @@
 // `namespace Commerce` declared in the parent BT.POS project.
 declare var Commerce: any;
 
-import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
+// `import type` is erased entirely at compile time (generates NO AMD dependency
+// in the define([...]) array).  A normal `import` would add
+// "../Messages/GetMarginCalculationResponse" as a runtime AMD dependency;
+// the Store Commerce AMD loader resolves relative IDs against the app
+// baseUrl — not the extension subfolder — so the file is never found and the
+// whole module silently fails to load ("operation not supported", no event log).
+import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * POS Operation handler for Margin Calculation (Operation ID: 50001).
