@@ -43,6 +43,16 @@ define([], function () {
             );
         }
 
+        // onReady is called by Store Commerce after the HTML template has been
+        // rendered into the DOM.  This method MUST exist — the framework checks
+        // for it when validating a view module.  Without it the error is:
+        //   "Loading view failed because the view module is invalid."
+        // Calling ko.applyBindings here activates all knockout bindings in
+        // MarginCalculationView.html.
+        MarginCalculationView.prototype.onReady = function (element) {
+            ko.applyBindings(this, element);
+        };
+
         MarginCalculationView.prototype.onClose = function () {
             Commerce.Host.instance.navigateBack();
         };

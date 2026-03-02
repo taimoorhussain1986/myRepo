@@ -95,6 +95,20 @@ export default class MarginCalculationView {
     }
 
     /**
+     * Called by the Store Commerce framework after the companion HTML template
+     * has been rendered into the DOM.  REQUIRED — Store Commerce validates that
+     * the view module exports a constructor whose prototype has this method.
+     * Without it the framework throws "Loading view failed because the view
+     * module is invalid."
+     *
+     * Calling ko.applyBindings here activates all the {{ text: ... }} bindings
+     * in MarginCalculationView.html.
+     */
+    public onReady(element: HTMLElement): void {
+        ko.applyBindings(this, element);
+    }
+
+    /**
      * Navigates back to the previous POS view.
      * Bound to the Close button in MarginCalculationView.html.
      */
