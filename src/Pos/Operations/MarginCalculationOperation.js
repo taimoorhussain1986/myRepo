@@ -55,9 +55,11 @@ define([], function () {
                     };
 
                     // Step 3: Navigate to the custom view.
+                    // Wrap in { state: ... } so ExtensionViewControllerBase exposes
+                    // the data via context.state inside MarginCalculationView.
                     var host = Commerce.Host && Commerce.Host.instance;
                     if (host && typeof host.navigateToView === "function") {
-                        host.navigateToView("MarginCalculationView", marginResult);
+                        host.navigateToView("MarginCalculationView", { state: marginResult });
                     } else {
                         // Fallback: show alert if navigation API unavailable.
                         alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %\n"

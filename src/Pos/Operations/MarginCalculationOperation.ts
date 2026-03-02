@@ -115,10 +115,13 @@ export default class MarginCalculationOperation {
 
                 // ------------------------------------------------------------------
                 // Step 3 — Navigate to the custom view, passing the margin data.
+                // ExtensionViewControllerBase receives navigation data via
+                // context.state, so we wrap marginResult in a state object.
                 // ------------------------------------------------------------------
                 let host: any = Commerce.Host && Commerce.Host.instance;
                 if (host && typeof host.navigateToView === "function") {
-                    host.navigateToView("MarginCalculationView", marginResult);
+                    // Pass state wrapper so MarginCalculationView reads context.state
+                    host.navigateToView("MarginCalculationView", { state: marginResult });
                 } else {
                     // Fallback for environments where navigateToView is absent.
                     alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %");
