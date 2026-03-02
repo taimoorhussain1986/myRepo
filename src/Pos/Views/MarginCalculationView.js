@@ -37,11 +37,12 @@ define(["require", "exports", "PosApi/Create/Views", "knockout"], function (requ
          *                 context.state carries the IMarginCalculationResult data
          *                 that was passed when the operation called navigator.navigate().
          */
-        function MarginCalculationView(context) {
-            var _this = _super.call(this, context) || this;
+        function MarginCalculationView(context, state) {
+            var _this = _super.call(this, context, state) || this;
 
-            // Navigation data lives in context.state.
-            var data = (context && context.state) ? context.state : null;
+            // Navigation data is passed as `state` (2nd constructor arg) by the framework,
+            // or falls back to context.state if state arg is not populated.
+            var data = state || (context && context.state) ? (state || context.state) : null;
             var result;
             if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
                 result = data;

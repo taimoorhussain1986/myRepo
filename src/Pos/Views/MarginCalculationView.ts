@@ -22,19 +22,20 @@ import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationR
  */
 export default class MarginCalculationView extends ExtensionViewControllerBase {
 
-    public itemId: KnockoutObservable<string>;
-    public purchasePriceDisplay: KnockoutObservable<string>;
-    public netAmountDisplay: KnockoutObservable<string>;
-    public totalCostDisplay: KnockoutObservable<string>;
-    public marginAmountDisplay: KnockoutObservable<string>;
-    public marginPercentageDisplay: KnockoutObservable<string>;
-    public marginCssClass: KnockoutObservable<string>;
+    public itemId: ReturnType<typeof ko.observable>;
+    public purchasePriceDisplay: ReturnType<typeof ko.observable>;
+    public netAmountDisplay: ReturnType<typeof ko.observable>;
+    public totalCostDisplay: ReturnType<typeof ko.observable>;
+    public marginAmountDisplay: ReturnType<typeof ko.observable>;
+    public marginPercentageDisplay: ReturnType<typeof ko.observable>;
+    public marginCssClass: ReturnType<typeof ko.observable>;
 
-    constructor(context: IExtensionViewControllerContext) {
-        super(context);
+    constructor(context: IExtensionViewControllerContext, state?: any) {
+        super(context, state);
 
-        // Navigation data is in context.state (set by the operation's navigate call).
-        const data: any = (context as any).state;
+        // Navigation data is passed as `state` (second constructor arg set by the operation).
+        // Fall back to context.state for safety.
+        const data: any = state || (context as any).state;
         let result: IMarginCalculationResult;
         if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
             result = data as IMarginCalculationResult;
