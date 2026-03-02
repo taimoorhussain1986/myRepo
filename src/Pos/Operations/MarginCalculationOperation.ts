@@ -10,24 +10,24 @@ declare var Commerce: any;
 
 import { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
-// ---------------------------------------------------------------------------
-// `Commerce` is `any`, so property access on it is also `any`.
-// TypeScript 4.2+ allows a class to `extend` an expression typed as `any`.
-// ---------------------------------------------------------------------------
-const _Base: any = Commerce.Operations.OperationHandlerBase;
-
 /**
  * POS Operation handler for Margin Calculation (Operation ID: 50001).
  *
- * Registered in manifest.json under requestHandlers:
- *   { "name": "MarginCalculationOperation",
- *     "description": "Margin Calculation",
- *     "modulePath": "Operations/MarginCalculationOperation" }
+ * Registered in manifest.json under components.extend.operations:
+ *   { "operationId": 50001,
+ *     "operationRequestHandlerPath": "Operations/MarginCalculationOperation" }
  *
- * Button added in HQ:
- *   Screen Layout Designer → Button Grid → Configure → blank Action → Operation number 50001
+ * ⚠️  DO NOT extend Commerce.Operations.OperationHandlerBase here.
+ *     In Store Commerce SDK 9.55, that property does NOT exist on the global
+ *     Commerce namespace at module-load time.  Accessing it yields `undefined`,
+ *     and `class Foo extends undefined` throws a TypeError immediately when the
+ *     module is first imported — the POS framework catches it and shows
+ *     "operation is not supported" with NO event-viewer entry.
+ *
+ *     The manifest `operations` registration only requires the exported class
+ *     to have an `executeAsync(request)` method.  No base class is needed.
  */
-export default class MarginCalculationOperation extends _Base {
+export default class MarginCalculationOperation {
 
     /**
      * Called by the POS runtime when operation 50001 fires.
