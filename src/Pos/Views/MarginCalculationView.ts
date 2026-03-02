@@ -1,43 +1,46 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
-import { ExtensionViewControllerBase, IExtensionViewControllerContext } from "PosApi/Create/Views";
+//
+// Uses the SAME base class as all other BT.POS views (BatchView, ReceiptView, etc.)
+// so the AMD dependency chain, knockout binding, and ExtensionViewControllerBase
+// prototype chain are all resolved exactly the same way as working views.
+//
+import KnockoutExtensionViewControllerBase from "../BaseClasses/KnockoutExtensionViewControllerBase";
 import ko = require("knockout");
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * View controller for the Margin Calculation custom view.
  *
- * MUST extend ExtensionViewControllerBase — Store Commerce 9.55 validates
- * the prototype chain at load time and rejects modules that don't inherit
- * from it with "New view module does not inherit from ExtensionViewControllerBase."
+ * Extends KnockoutExtensionViewControllerBase (same as BatchView, ReceiptView)
+ * which itself extends ExtensionViewControllerBase — so the Store Commerce 9.55
+ * prototype chain check passes exactly as it does for all other BT.POS views.
  *
- * Navigation data is passed via context.state (set by MarginCalculationOperation
- * when it calls the navigator).
+ * Navigation data is passed via the state parameter from MarginCalculationOperation.
  *
  * Companion template : MarginCalculationView.html
  * Registered in manifest.json create.views:
  *   { "pageName": "MarginCalculationView",
  *     "viewControllerPath": "Views/MarginCalculationView" }
  */
-export default class MarginCalculationView extends ExtensionViewControllerBase {
+export default class MarginCalculationView extends KnockoutExtensionViewControllerBase {
 
-    public itemId: ReturnType<typeof ko.observable>;
-    public purchasePriceDisplay: ReturnType<typeof ko.observable>;
-    public netAmountDisplay: ReturnType<typeof ko.observable>;
-    public totalCostDisplay: ReturnType<typeof ko.observable>;
-    public marginAmountDisplay: ReturnType<typeof ko.observable>;
-    public marginPercentageDisplay: ReturnType<typeof ko.observable>;
-    public marginCssClass: ReturnType<typeof ko.observable>;
+    public itemId: KnockoutObservable<string>;
+    public purchasePriceDisplay: KnockoutObservable<string>;
+    public netAmountDisplay: KnockoutObservable<string>;
+    public totalCostDisplay: KnockoutObservable<string>;
+    public marginAmountDisplay: KnockoutObservable<string>;
+    public marginPercentageDisplay: KnockoutObservable<string>;
+    public marginCssClass: KnockoutObservable<string>;
 
-    constructor(context: IExtensionViewControllerContext, state?: any) {
+    constructor(context: any, state?: any) {
         super(context, state);
 
-        // Navigation data is passed directly as `state` (second constructor arg).
-        // The operation calls navigator.navigate("MarginCalculationView", marginResult),
-        // so state IS the IMarginCalculationResult object — no { state: ... } wrapper.
+        // Navigation data is passed directly as the state parameter.
+        // The operation calls navigator.navigate("MarginCalculationView", marginResult).
         // After super(), (this as any).state also holds the same value.
-        const data: any = state || (this as any).state || (context as any).state;
+        const data: any = state || (this as any).state || (context && context.state);
         let result: IMarginCalculationResult;
         if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
             result = data as IMarginCalculationResult;
@@ -67,7 +70,9 @@ export default class MarginCalculationView extends ExtensionViewControllerBase {
 
     /** Close button handler — navigates back to the previous view. */
     public onClose(): void {
-        this.context.navigator.navigateBack();
+        if (this.context && (this.context as any).navigator) {
+            (this.context as any).navigator.navigateBack();
+        }
     }
 
     public dispose(): void {

@@ -1,48 +1,45 @@
 // Pre-compiled AMD module for direct deployment to Store Commerce Extensions.
 // Source: src/Pos/Views/MarginCalculationView.ts
 //
-// KEY FIX: "New view module does not inherit from ExtensionViewControllerBase."
-//   Store Commerce 9.55 checks the prototype chain at load time.
-//   This module requires "PosApi/Create/Views" and extends
-//   Views.ExtensionViewControllerBase so the instanceof check passes.
+// Extends KnockoutExtensionViewControllerBase — the SAME base class used by
+// BatchView, ReceiptView, and all other BT.POS custom views.
+// This makes the AMD dependency chain, knockout binding, and
+// ExtensionViewControllerBase prototype chain resolve identically to working views.
 //
-// Deploy to: ...\Store Commerce\Extensions\Beaumont.Commerce\Views\MarginCalculationView.js
-define(["require", "exports", "PosApi/Create/Views", "knockout"], function (require, exports, Views, ko) {
+// Deploy to: ...\Store Commerce\Extensions\Beaumont.Commerce\BT.POS\Views\MarginCalculationView.js
+define(["require", "exports", "../BaseClasses/KnockoutExtensionViewControllerBase", "knockout"], function (require, exports, KnockoutExtensionViewControllerBase, ko) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
 
-    // TypeScript __extends helper (inlined so no tslib dependency is needed).
+    // TypeScript __extends helper (inlined — no tslib dependency).
     var __extends = (function () {
         var extendStatics = function (d, b) {
             extendStatics = Object.setPrototypeOf ||
                 ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-                function (d, b) { for (var p in b) { if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; } };
+                function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
             return extendStatics(d, b);
         };
         return function (d, b) {
-            if (typeof b !== "function" && b !== null) {
+            if (typeof b !== "function" && b !== null)
                 throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-            }
             extendStatics(d, b);
             function __() { this.constructor = d; }
             d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
         };
     })();
 
+    // Use default export of KnockoutExtensionViewControllerBase module.
+    var _Base = KnockoutExtensionViewControllerBase && KnockoutExtensionViewControllerBase["default"]
+        ? KnockoutExtensionViewControllerBase["default"]
+        : KnockoutExtensionViewControllerBase;
+
     var MarginCalculationView = /** @class */ (function (_super) {
         __extends(MarginCalculationView, _super);
 
-        /**
-         * @param context  IExtensionViewControllerContext supplied by the framework.
-         *                 context.state carries the IMarginCalculationResult data
-         *                 that was passed when the operation called navigator.navigate().
-         */
         function MarginCalculationView(context, state) {
             var _this = _super.call(this, context, state) || this;
 
-            // Navigation data is passed directly as `state` (second constructor arg).
-            // The operation calls navigate("MarginCalculationView", marginResult) so
-            // state IS the IMarginCalculationResult — no { state: ... } wrapper.
+            // Navigation data is the state parameter passed by the operation.
             // After super(), _this.state also holds the same value.
             var data = state || (_this && _this.state) || (context && context.state) || null;
             var result;
@@ -68,7 +65,6 @@ define(["require", "exports", "PosApi/Create/Views", "knockout"], function (requ
         }
 
         // Called by the framework after the HTML template is in the DOM.
-        // ko.applyBindings activates all data-bind attributes in MarginCalculationView.html.
         MarginCalculationView.prototype.onReady = function (element) {
             ko.applyBindings(this, element);
         };
@@ -85,7 +81,7 @@ define(["require", "exports", "PosApi/Create/Views", "knockout"], function (requ
         };
 
         return MarginCalculationView;
-    }(Views.ExtensionViewControllerBase));
+    }(_Base));
 
     exports["default"] = MarginCalculationView;
 });
