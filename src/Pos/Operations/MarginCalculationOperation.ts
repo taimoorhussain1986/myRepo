@@ -115,15 +115,28 @@ export default class MarginCalculationOperation {
 
                 // ------------------------------------------------------------------
                 // Step 3 — Navigate to the custom view, passing the margin data.
-                // ExtensionViewControllerBase receives navigation data via
-                // context.state, so we wrap marginResult in a state object.
+                //
+                // SDK 9.55 pattern: use the navigator from the operation request
+                // context.  The navigator.navigate() call passes marginResult
+                // directly as the navigation state; ExtensionViewControllerBase
+                // stores it in this.state for the view constructor to read.
+                //
+                // Fallback: Commerce.Host.instance.navigateToView (older pattern).
                 // ------------------------------------------------------------------
-                let host: any = Commerce.Host && Commerce.Host.instance;
-                if (host && typeof host.navigateToView === "function") {
-                    // Pass state wrapper so MarginCalculationView reads context.state
-                    host.navigateToView("MarginCalculationView", { state: marginResult });
-                } else {
-                    // Fallback for environments where navigateToView is absent.
+                let navigated: boolean = false;
+                if (options && options.context && options.context.navigator
+                        && typeof options.context.navigator.navigate === "function") {
+                    options.context.navigator.navigate("MarginCalculationView", marginResult);
+                    navigated = true;
+                }
+                if (!navigated) {
+                    let host: any = Commerce.Host && Commerce.Host.instance;
+                    if (host && typeof host.navigateToView === "function") {
+                        host.navigateToView("MarginCalculationView", marginResult);
+                        navigated = true;
+                    }
+                }
+                if (!navigated) {
                     alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %");
                 }
 

@@ -33,9 +33,11 @@ export default class MarginCalculationView extends ExtensionViewControllerBase {
     constructor(context: IExtensionViewControllerContext, state?: any) {
         super(context, state);
 
-        // Navigation data is passed as `state` (second constructor arg set by the operation).
-        // Fall back to context.state for safety.
-        const data: any = state || (context as any).state;
+        // Navigation data is passed directly as `state` (second constructor arg).
+        // The operation calls navigator.navigate("MarginCalculationView", marginResult),
+        // so state IS the IMarginCalculationResult object — no { state: ... } wrapper.
+        // After super(), (this as any).state also holds the same value.
+        const data: any = state || (this as any).state || (context as any).state;
         let result: IMarginCalculationResult;
         if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
             result = data as IMarginCalculationResult;

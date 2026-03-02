@@ -40,9 +40,11 @@ define(["require", "exports", "PosApi/Create/Views", "knockout"], function (requ
         function MarginCalculationView(context, state) {
             var _this = _super.call(this, context, state) || this;
 
-            // Navigation data is passed as `state` (2nd constructor arg) by the framework,
-            // or falls back to context.state if state arg is not populated.
-            var data = state || (context && context.state) ? (state || context.state) : null;
+            // Navigation data is passed directly as `state` (second constructor arg).
+            // The operation calls navigate("MarginCalculationView", marginResult) so
+            // state IS the IMarginCalculationResult — no { state: ... } wrapper.
+            // After super(), _this.state also holds the same value.
+            var data = state || (_this && _this.state) || (context && context.state) || null;
             var result;
             if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
                 result = data;
