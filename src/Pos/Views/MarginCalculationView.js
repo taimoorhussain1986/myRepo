@@ -76,6 +76,9 @@ define(["require", "exports", "PosApi/Create/Views", "knockout"], function (requ
             this.context.navigator.navigateBack();
         };
 
+        // Required abstract method from CustomViewControllerBase.
+        MarginCalculationView.prototype.dispose = function () { };
+
         return MarginCalculationView;
     }(Views.CustomViewControllerBase));
 

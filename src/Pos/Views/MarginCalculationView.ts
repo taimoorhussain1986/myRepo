@@ -69,4 +69,7 @@ export default class MarginCalculationView extends Views.CustomViewControllerBas
     public onClose(): void {
         this.context.navigator.navigateBack();
     }
+
+    /** Required abstract method from CustomViewControllerBase. */
+    public dispose(): void { }
 }
