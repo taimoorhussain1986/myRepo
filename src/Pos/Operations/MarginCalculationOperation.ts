@@ -23,10 +23,24 @@ import { ClientEntities } from "PosApi/Entities";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 // ---------------------------------------------------------------------------
-// Request class — T for ExtensionOperationRequestHandlerBase<T, TResponse>.
-// Constructor must accept (operationId: number, correlationId: string).
+// Response class — must have _responseId and responseId to satisfy
+// the 'T extends Response' constraint on ExtensionOperationRequestBase<T>.
 // ---------------------------------------------------------------------------
-export class MarginCalculationOperationRequest extends ExtensionOperationRequestBase<void> {
+export class MarginCalculationOperationResponse {
+    public _responseId: string;
+    public responseId: string;
+    constructor() {
+        this._responseId = "MarginCalculationOperationResponse";
+        this.responseId  = "MarginCalculationOperationResponse";
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Request class — T for ExtensionOperationRequestHandlerBase<T>.
+// Must extend ExtensionOperationRequestBase<TResponse extends Response>.
+// ---------------------------------------------------------------------------
+export class MarginCalculationOperationRequest
+    extends ExtensionOperationRequestBase<MarginCalculationOperationResponse> {
     constructor(operationId: number, correlationId: string) {
         super(operationId, correlationId);
     }
@@ -36,13 +50,13 @@ export class MarginCalculationOperationRequest extends ExtensionOperationRequest
 // Handler class — registered in manifest operations[] for operationId 50001.
 // ---------------------------------------------------------------------------
 export default class MarginCalculationOperation
-    extends ExtensionOperationRequestHandlerBase<MarginCalculationOperationRequest, void> {
+    extends ExtensionOperationRequestHandlerBase<MarginCalculationOperationRequest> {
 
     /**
      * SDK REQUIREMENT: must return the request class constructor.
      * Pos.Controls.js:18851 checks: if (!handler.supportedRequestType()) throw.
      */
-    public supportedRequestType(): ExtensionOperationRequestType<MarginCalculationOperationRequest, void> {
+    public supportedRequestType(): ExtensionOperationRequestType<MarginCalculationOperationRequest> {
         return MarginCalculationOperationRequest;
     }
 
