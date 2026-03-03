@@ -1,12 +1,12 @@
 // Pre-compiled AMD module - copy directly to Store Commerce Extensions.
 // Source: src/Pos/Operations/MarginCalculationOperation.ts
 //
-// KEY FIX: supportedRequestType() MUST return the constructor of a request
-// class that extends Operations.OperationRequest.
-// Pos.Controls.js:18851 does: if (!handler.supportedRequestType()) { throw ... }
-// Returning null → "operation is not supported". Returning the constructor → OK.
+// SDK 9.55 changes vs earlier versions:
+//  - Request extends ExtensionOperationRequestBase<void> (NOT OperationRequest)
+//  - executeAsync takes ONE param (request); context accessed via this.context
+//  - supportedRequestType() returns the request class constructor
 //
-define(["require", "exports", "PosApi/Create/Operations"], function (require, exports, Operations) {
+define(["require", "exports", "PosApi/Create/Operations", "PosApi/Entities"], function (require, exports, Create_Operations_1, PosApi_Entities_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var __extends = (this && this.__extends) || (function () {
@@ -27,21 +27,20 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
     })();
 
     // -------------------------------------------------------------------------
-    // MarginCalculationOperationRequest — required generic type T for
-    // ExtensionOperationRequestHandlerBase<T>. T must extend OperationRequest.
+    // Request class — extends ExtensionOperationRequestBase<void>.
+    // Constructor: (operationId: number, correlationId: string)
     // -------------------------------------------------------------------------
     var MarginCalculationOperationRequest = /** @class */ (function (_super) {
         __extends(MarginCalculationOperationRequest, _super);
-        function MarginCalculationOperationRequest(correlationId) {
-            return _super.call(this, correlationId) || this;
+        function MarginCalculationOperationRequest(operationId, correlationId) {
+            return _super.call(this, operationId, correlationId) || this;
         }
         return MarginCalculationOperationRequest;
-    }(Operations.OperationRequest));
+    }(Create_Operations_1.ExtensionOperationRequestBase));
     exports.MarginCalculationOperationRequest = MarginCalculationOperationRequest;
 
     // -------------------------------------------------------------------------
-    // MarginCalculationOperation — registered in manifest operations[] for
-    // operationId 50001.
+    // Handler class — registered in manifest operations[] for operationId 50001.
     // -------------------------------------------------------------------------
     var MarginCalculationOperation = /** @class */ (function (_super) {
         __extends(MarginCalculationOperation, _super);
@@ -50,21 +49,23 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
         }
 
         /**
-         * SDK REQUIREMENT: return the request constructor — NOT null.
-         * Pos.Controls.js:18851 does: if (!handler.supportedRequestType()) throw.
+         * Return the request class constructor — NOT null.
+         * Pos.Controls.js checks: if (!handler.supportedRequestType()) throw.
          */
         MarginCalculationOperation.prototype.supportedRequestType = function () {
             return MarginCalculationOperationRequest;
         };
 
         /**
-         * Called by the POS runtime when operation 50001 fires.
-         * @param {any} context  Execution context — contains navigator, cartAccessor etc.
-         * @param {any} request  The MarginCalculationOperationRequest instance.
+         * Single-parameter: (request).
+         * SDK 9.55: context is accessed via this.context (set by base class).
          */
-        MarginCalculationOperation.prototype.executeAsync = function (context, request) {
+        MarginCalculationOperation.prototype.executeAsync = function (request) {
+            var _this = this;
             return new Promise(function (resolve, reject) {
                 try {
+                    var context = _this.context;
+
                     // Step 1: Get current cart from context.cartAccessor.cart
                     var cart = context && context.cartAccessor
                         ? context.cartAccessor.cart
@@ -122,7 +123,7 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
         };
 
         return MarginCalculationOperation;
-    }(Operations.ExtensionOperationRequestHandlerBase));
+    }(Create_Operations_1.ExtensionOperationRequestHandlerBase));
 
     exports["default"] = MarginCalculationOperation;
     return MarginCalculationOperation;

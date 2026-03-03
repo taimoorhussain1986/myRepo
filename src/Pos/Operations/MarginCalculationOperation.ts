@@ -1,27 +1,34 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
-// SDK 9.55: Custom operation handler pattern.
+// SDK 9.55 custom operation handler — correct API:
 //
-// KEY FIX: supportedRequestType() MUST return the constructor of the request
-// class — NOT null.  Pos.Controls.js:18851 checks:
-//   if (!handler.supportedRequestType()) { throw CommerceError("not supported"); }
-// Returning null causes "operation is not supported" regardless of base class.
+// 1. Request class MUST extend ExtensionOperationRequestBase<TResponse>
+//    (not OperationRequest — that does not exist in PosApi/Create/Operations).
+//    ExtensionOperationRequestBase provides _responseId, responseId,
+//    skipManagerPermissionChecks, operationId, correlationId, _t — all required
+//    by the ExtensionOperationRequestHandlerBase<T> generic constraint.
 //
-// The request class must extend Operations.OperationRequest (from
-// PosApi/Create/Operations). executeAsync takes (context, request).
+// 2. executeAsync takes ONE parameter: the request object.
+//    The execution context is accessed via this.context (set by the base class).
+//
+// 3. supportedRequestType() must return the request class constructor.
 // ----------------------------------------------------------------------------
-import * as Operations from "PosApi/Create/Operations";
+import {
+    ExtensionOperationRequestBase,
+    ExtensionOperationRequestHandlerBase,
+    ExtensionOperationRequestType
+} from "PosApi/Create/Operations";
 import { ClientEntities } from "PosApi/Entities";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 // ---------------------------------------------------------------------------
-// Request class — required by ExtensionOperationRequestHandlerBase<T>.
-// T must extend Operations.OperationRequest.
+// Request class — T for ExtensionOperationRequestHandlerBase<T, TResponse>.
+// Constructor must accept (operationId: number, correlationId: string).
 // ---------------------------------------------------------------------------
-export class MarginCalculationOperationRequest extends Operations.OperationRequest {
-    constructor(correlationId: string) {
-        super(correlationId);
+export class MarginCalculationOperationRequest extends ExtensionOperationRequestBase<void> {
+    constructor(operationId: number, correlationId: string) {
+        super(operationId, correlationId);
     }
 }
 
@@ -29,32 +36,38 @@ export class MarginCalculationOperationRequest extends Operations.OperationReque
 // Handler class — registered in manifest operations[] for operationId 50001.
 // ---------------------------------------------------------------------------
 export default class MarginCalculationOperation
-    extends Operations.ExtensionOperationRequestHandlerBase<MarginCalculationOperationRequest> {
+    extends ExtensionOperationRequestHandlerBase<MarginCalculationOperationRequest, void> {
 
     /**
-     * SDK REQUIREMENT: must return the constructor of the request type.
-     * Returning null → framework throws "operation is not supported".
+     * SDK REQUIREMENT: must return the request class constructor.
+     * Pos.Controls.js:18851 checks: if (!handler.supportedRequestType()) throw.
      */
-    public supportedRequestType(): Operations.ExtensionOperationRequestType<MarginCalculationOperationRequest> {
+    public supportedRequestType(): ExtensionOperationRequestType<MarginCalculationOperationRequest, void> {
         return MarginCalculationOperationRequest;
     }
 
+    /**
+     * Single-parameter signature — matches base class.
+     * Access execution context via this.context (set by ExtensionOperationRequestHandlerBase).
+     */
     public executeAsync(
-        context: Operations.ExtensionOperationRequestHandlerBase.IContext,
         request: MarginCalculationOperationRequest
     ): Promise<ClientEntities.ICancelableDataResult<void>> {
+
+        let _this: any = this;
 
         return new Promise<ClientEntities.ICancelableDataResult<void>>(
             (resolve: (value: ClientEntities.ICancelableDataResult<void>) => void,
              reject: (reason?: any) => void): void => {
 
             try {
+                let context: any = _this.context;
+
                 // ------------------------------------------------------------------
                 // Step 1 — Resolve the active cart and selected cart line.
-                // In SDK 9.55 the cart is on context.cartAccessor.cart.
                 // ------------------------------------------------------------------
-                let cart: any = context && (context as any).cartAccessor
-                    ? (context as any).cartAccessor.cart
+                let cart: any = context && context.cartAccessor
+                    ? context.cartAccessor.cart
                     : null;
 
                 if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
@@ -99,9 +112,9 @@ export default class MarginCalculationOperation
 
                 // ------------------------------------------------------------------
                 // Step 3 — Navigate to the Margin Calculation view.
-                // SDK 9.55: context.navigator.navigate(pageName, state).
+                // SDK 9.55: this.context.navigator.navigate(pageName, state).
                 // ------------------------------------------------------------------
-                let nav: any = (context as any).navigator;
+                let nav: any = context && context.navigator;
                 if (nav && typeof nav.navigate === "function") {
                     nav.navigate("MarginCalculationView", marginResult);
                 } else {
