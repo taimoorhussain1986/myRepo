@@ -1,15 +1,20 @@
 // Pre-compiled AMD module for direct deployment to Store Commerce Extensions.
 // Source: src/Pos/Views/MarginCalculationView.ts
 //
-// Extends KnockoutExtensionViewControllerBase — the SAME base class used by
-// BatchView, ReceiptView, and all other BT.POS custom views.
-// This makes the AMD dependency chain, knockout binding, and
-// ExtensionViewControllerBase prototype chain resolve identically to working views.
+// Mirrors EXACT pattern of StoreHoursView / BatchView:
+//   - "PosApi/Create/Views" AMD dependency
+//   - import ko from "knockout" (default import)
+//   - extends Views.CustomViewControllerBase (NOT deprecated ExtensionViewControllerBase)
+//   - super(context) single arg
+//   - onReady(element) + ko.applyBindings
 //
 // Deploy to: ...\Store Commerce\Extensions\Beaumont.Commerce\BT.POS\Views\MarginCalculationView.js
-define(["require", "exports", "../BaseClasses/KnockoutExtensionViewControllerBase", "knockout"], function (require, exports, KnockoutExtensionViewControllerBase, ko) {
+define(["require", "exports", "PosApi/Create/Views", "knockout"], function (require, exports, Views, knockout_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+
+    // Handle both ES module default export and CommonJS export of knockout.
+    var ko = (knockout_1 && knockout_1["default"]) ? knockout_1["default"] : knockout_1;
 
     // TypeScript __extends helper (inlined — no tslib dependency).
     var __extends = (function () {
@@ -28,20 +33,16 @@ define(["require", "exports", "../BaseClasses/KnockoutExtensionViewControllerBas
         };
     })();
 
-    // Use default export of KnockoutExtensionViewControllerBase module.
-    var _Base = KnockoutExtensionViewControllerBase && KnockoutExtensionViewControllerBase["default"]
-        ? KnockoutExtensionViewControllerBase["default"]
-        : KnockoutExtensionViewControllerBase;
-
     var MarginCalculationView = /** @class */ (function (_super) {
         __extends(MarginCalculationView, _super);
 
+        // constructor(context: ICustomViewControllerContext, state?: ICustomViewControllerBaseState)
         function MarginCalculationView(context, state) {
-            var _this = _super.call(this, context, state) || this;
+            // super(context) — single arg, same as StoreHoursView / BatchView
+            var _this = _super.call(this, context) || this;
 
             // Navigation data is the state parameter passed by the operation.
-            // After super(), _this.state also holds the same value.
-            var data = state || (_this && _this.state) || (context && context.state) || null;
+            var data = state || null;
             var result;
             if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
                 result = data;
@@ -64,24 +65,19 @@ define(["require", "exports", "../BaseClasses/KnockoutExtensionViewControllerBas
             return _this;
         }
 
-        // Called by the framework after the HTML template is in the DOM.
+        // Called by the framework after the HTML template is rendered into the DOM.
+        // Same pattern as StoreHoursView / BatchView.
         MarginCalculationView.prototype.onReady = function (element) {
             ko.applyBindings(this, element);
         };
 
         // Close button handler.
         MarginCalculationView.prototype.onClose = function () {
-            if (this.context && this.context.navigator) {
-                this.context.navigator.navigateBack();
-            }
-        };
-
-        MarginCalculationView.prototype.dispose = function () {
-            _super.prototype.dispose.call(this);
+            this.context.navigator.navigateBack();
         };
 
         return MarginCalculationView;
-    }(_Base));
+    }(Views.CustomViewControllerBase));
 
     exports["default"] = MarginCalculationView;
 });

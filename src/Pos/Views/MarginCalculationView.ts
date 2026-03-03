@@ -2,29 +2,27 @@
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
 //
-// Uses the SAME base class as all other BT.POS views (BatchView, ReceiptView, etc.)
-// so the AMD dependency chain, knockout binding, and ExtensionViewControllerBase
-// prototype chain are all resolved exactly the same way as working views.
+// Mirrors the exact pattern used by StoreHoursView / BatchView in BT.POS:
+//   - "PosApi/Create/Views" (namespace import)
+//   - extends Views.CustomViewControllerBase   (NOT deprecated ExtensionViewControllerBase)
+//   - import ko from "knockout"
 //
-import KnockoutExtensionViewControllerBase from "../BaseClasses/KnockoutExtensionViewControllerBase";
-import ko = require("knockout");
+import * as Views from "PosApi/Create/Views";
+import ko from "knockout";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /**
  * View controller for the Margin Calculation custom view.
  *
- * Extends KnockoutExtensionViewControllerBase (same as BatchView, ReceiptView)
- * which itself extends ExtensionViewControllerBase — so the Store Commerce 9.55
- * prototype chain check passes exactly as it does for all other BT.POS views.
- *
- * Navigation data is passed via the state parameter from MarginCalculationOperation.
+ * Extends Views.CustomViewControllerBase — same as BatchView / StoreHoursView.
+ * SDK 9.55 requires CustomViewControllerBase; ExtensionViewControllerBase is deprecated.
  *
  * Companion template : MarginCalculationView.html
  * Registered in manifest.json create.views:
  *   { "pageName": "MarginCalculationView",
  *     "viewControllerPath": "Views/MarginCalculationView" }
  */
-export default class MarginCalculationView extends KnockoutExtensionViewControllerBase {
+export default class MarginCalculationView extends Views.CustomViewControllerBase {
 
     public itemId: KnockoutObservable<string>;
     public purchasePriceDisplay: KnockoutObservable<string>;
@@ -34,13 +32,11 @@ export default class MarginCalculationView extends KnockoutExtensionViewControll
     public marginPercentageDisplay: KnockoutObservable<string>;
     public marginCssClass: KnockoutObservable<string>;
 
-    constructor(context: any, state?: any) {
-        super(context, state);
+    constructor(context: Views.ICustomViewControllerContext, state?: Views.ICustomViewControllerBaseState) {
+        super(context);
 
-        // Navigation data is passed directly as the state parameter.
-        // The operation calls navigator.navigate("MarginCalculationView", marginResult).
-        // After super(), (this as any).state also holds the same value.
-        const data: any = state || (this as any).state || (context && context.state);
+        // Navigation data is passed as the state parameter by the operation.
+        const data: any = state;
         let result: IMarginCalculationResult;
         if (data && typeof data === "object" && typeof data.itemId !== "undefined") {
             result = data as IMarginCalculationResult;
@@ -61,8 +57,9 @@ export default class MarginCalculationView extends KnockoutExtensionViewControll
     }
 
     /**
-     * Called by the framework after the HTML template is in the DOM.
+     * Called by the framework after the HTML template is rendered into the DOM.
      * ko.applyBindings activates all data-bind attributes in MarginCalculationView.html.
+     * Same pattern as StoreHoursView / BatchView.
      */
     public onReady(element: HTMLElement): void {
         ko.applyBindings(this, element);
@@ -70,12 +67,6 @@ export default class MarginCalculationView extends KnockoutExtensionViewControll
 
     /** Close button handler — navigates back to the previous view. */
     public onClose(): void {
-        if (this.context && (this.context as any).navigator) {
-            (this.context as any).navigator.navigateBack();
-        }
-    }
-
-    public dispose(): void {
-        super.dispose();
+        this.context.navigator.navigateBack();
     }
 }
