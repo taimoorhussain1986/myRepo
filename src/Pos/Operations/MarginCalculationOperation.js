@@ -1,12 +1,6 @@
 // Pre-compiled AMD module - copy directly to Store Commerce Extensions.
 // Source: src/Pos/Operations/MarginCalculationOperation.ts
-//
-// SDK 9.55 changes vs earlier versions:
-//  - Request extends ExtensionOperationRequestBase<void> (NOT OperationRequest)
-//  - executeAsync takes ONE param (request); context accessed via this.context
-//  - supportedRequestType() returns the request class constructor
-//
-define(["require", "exports", "PosApi/Create/Operations", "PosApi/Entities"], function (require, exports, Create_Operations_1, PosApi_Entities_1) {
+define(["require", "exports", "PosApi/Create/Operations"], function (require, exports, Create_Operations_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     var __extends = (this && this.__extends) || (function () {
@@ -26,18 +20,9 @@ define(["require", "exports", "PosApi/Create/Operations", "PosApi/Entities"], fu
         };
     })();
 
-    // -------------------------------------------------------------------------
-    // Request class — extends ExtensionOperationRequestBase<void>.
-    // Constructor: (operationId: number, correlationId: string)
-    // -------------------------------------------------------------------------
-    var MarginCalculationOperationRequest = /** @class */ (function (_super) {
-        __extends(MarginCalculationOperationRequest, _super);
-        function MarginCalculationOperationRequest(operationId, correlationId) {
-            return _super.call(this, operationId, correlationId) || this;
-        }
-        return MarginCalculationOperationRequest;
-    }(Create_Operations_1.ExtensionOperationRequestBase));
-    exports.MarginCalculationOperationRequest = MarginCalculationOperationRequest;
+    // Intermediate variable so TypeScript (and the runtime) can extend without
+    // triggering generic type constraints on ExtensionOperationRequestHandlerBase.
+    var _OpBase = Create_Operations_1.ExtensionOperationRequestHandlerBase;
 
     // -------------------------------------------------------------------------
     // Handler class — registered in manifest operations[] for operationId 50001.
@@ -49,16 +34,16 @@ define(["require", "exports", "PosApi/Create/Operations", "PosApi/Entities"], fu
         }
 
         /**
-         * Return the request class constructor — NOT null.
+         * Return a truthy value.
          * Pos.Controls.js checks: if (!handler.supportedRequestType()) throw.
          */
         MarginCalculationOperation.prototype.supportedRequestType = function () {
-            return MarginCalculationOperationRequest;
+            return function MarginCalculationOperationRequest() { return {}; };
         };
 
         /**
-         * Single-parameter: (request).
-         * SDK 9.55: context is accessed via this.context (set by base class).
+         * Single-parameter executeAsync — called by POS framework.
+         * Context is injected via this.context by the base class.
          */
         MarginCalculationOperation.prototype.executeAsync = function (request) {
             var _this = this;
@@ -123,7 +108,7 @@ define(["require", "exports", "PosApi/Create/Operations", "PosApi/Entities"], fu
         };
 
         return MarginCalculationOperation;
-    }(Create_Operations_1.ExtensionOperationRequestHandlerBase));
+    }(_OpBase));
 
     exports["default"] = MarginCalculationOperation;
     return MarginCalculationOperation;
