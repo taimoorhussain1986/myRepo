@@ -24,13 +24,13 @@ import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationR
  */
 export default class MarginCalculationView extends Views.CustomViewControllerBase {
 
-    public itemId: KnockoutObservable<string>;
-    public purchasePriceDisplay: KnockoutObservable<string>;
-    public netAmountDisplay: KnockoutObservable<string>;
-    public totalCostDisplay: KnockoutObservable<string>;
-    public marginAmountDisplay: KnockoutObservable<string>;
-    public marginPercentageDisplay: KnockoutObservable<string>;
-    public marginCssClass: KnockoutObservable<string>;
+    public itemId: ReturnType<typeof ko.observable>;
+    public purchasePriceDisplay: ReturnType<typeof ko.observable>;
+    public netAmountDisplay: ReturnType<typeof ko.observable>;
+    public totalCostDisplay: ReturnType<typeof ko.observable>;
+    public marginAmountDisplay: ReturnType<typeof ko.observable>;
+    public marginPercentageDisplay: ReturnType<typeof ko.observable>;
+    public marginCssClass: ReturnType<typeof ko.observable>;
 
     constructor(context: Views.ICustomViewControllerContext, state?: Views.ICustomViewControllerBaseState) {
         super(context);
