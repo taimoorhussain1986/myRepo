@@ -2,15 +2,27 @@
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
 import {
-    ExtensionOperationRequestHandlerBase
+    ExtensionOperationRequestHandlerBase,
+    ExtensionOperationRequestBase
 } from "PosApi/Create/Operations";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
-// SDK 9.55: ExtensionOperationRequestHandlerBase<T> has generic constraints on T
-// (private _responseId, CRTP _t) that cannot be satisfied by a plain class.
-// Using an intermediate any-typed variable to extend without type-checking
-// the constraint — runtime behaviour is identical (prototype chain is correct).
+// SDK 9.55: Generic constraints on ExtensionOperationRequestHandlerBase<T> and
+// ExtensionOperationRequestBase<TResponse> require private members that cannot
+// be satisfied by a plain class. Intermediate any-typed variables bypass the
+// constraint check at compile time; runtime prototype chain is identical.
 const _OpBase: any = ExtensionOperationRequestHandlerBase;
+const _ReqBase: any = ExtensionOperationRequestBase;
+
+// ---------------------------------------------------------------------------
+// Request class — must extend ExtensionOperationRequestBase so that the
+// framework's instanceof check at Pos.Controls.js passes.
+// ---------------------------------------------------------------------------
+class MarginCalculationOperationRequest extends _ReqBase {
+    constructor(correlationId: string) {
+        super(50001, correlationId);
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Handler class — registered in manifest operations[] for operationId 50001.
@@ -18,15 +30,16 @@ const _OpBase: any = ExtensionOperationRequestHandlerBase;
 export default class MarginCalculationOperation extends _OpBase {
 
     /**
-     * SDK REQUIREMENT: must return a truthy value.
-     * Pos.Controls.js:18851 checks: if (!handler.supportedRequestType()) throw.
+     * SDK REQUIREMENT: must return a constructor whose prototype inherits from
+     * ExtensionOperationRequestBase. The framework checks this with instanceof.
      */
     public supportedRequestType(): any {
-        return function MarginCalculationOperationRequest() { return {}; };
+        return MarginCalculationOperationRequest;
     }
 
     /**
-     * Single-parameter executeAsync — called by POS framework.
+     * Single-parameter executeAsync — called by POS framework with the request
+     * instance created from supportedRequestType().
      */
     public executeAsync(request: any): Promise<any> {
 
@@ -45,8 +58,8 @@ export default class MarginCalculationOperation extends _OpBase {
                     : null;
 
                 if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-                    alert("No sales line found. Please select a product line first.");
-                    resolve({ canceled: true, data: void 0 });
+                    alert("No sales line found. Please add a product to the transaction first.");
+                    resolve({ canceled: false, data: { canceled: false } });
                     return;
                 }
 
@@ -92,10 +105,13 @@ export default class MarginCalculationOperation extends _OpBase {
                 if (nav && typeof nav.navigate === "function") {
                     nav.navigate("MarginCalculationView", marginResult);
                 } else {
-                    alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %");
+                    // Fallback: show alert if navigator is not available.
+                    alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %\n"
+                        + "Item: " + itemId + "\n"
+                        + "Net Amount: " + netAmount.toFixed(2));
                 }
 
-                resolve({ canceled: false, data: void 0 });
+                resolve({ canceled: false, data: { canceled: false } });
 
             } catch (ex) {
                 reject(ex);

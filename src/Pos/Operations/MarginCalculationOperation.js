@@ -20,9 +20,22 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
         };
     })();
 
-    // Intermediate variable so TypeScript (and the runtime) can extend without
-    // triggering generic type constraints on ExtensionOperationRequestHandlerBase.
+    // Intermediate variables to bypass SDK generic constraints at compile time.
+    // Runtime prototype chain is identical to proper inheritance.
     var _OpBase = Create_Operations_1.ExtensionOperationRequestHandlerBase;
+    var _ReqBase = Create_Operations_1.ExtensionOperationRequestBase;
+
+    // -------------------------------------------------------------------------
+    // Request class — must extend ExtensionOperationRequestBase so the
+    // framework's instanceof check in Pos.Controls.js passes.
+    // -------------------------------------------------------------------------
+    var MarginCalculationOperationRequest = /** @class */ (function (_super) {
+        __extends(MarginCalculationOperationRequest, _super);
+        function MarginCalculationOperationRequest(correlationId) {
+            return _super.call(this, 50001, correlationId) || this;
+        }
+        return MarginCalculationOperationRequest;
+    }(_ReqBase));
 
     // -------------------------------------------------------------------------
     // Handler class — registered in manifest operations[] for operationId 50001.
@@ -34,16 +47,16 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
         }
 
         /**
-         * Return a truthy value.
-         * Pos.Controls.js checks: if (!handler.supportedRequestType()) throw.
+         * Return the request constructor whose prototype inherits from
+         * ExtensionOperationRequestBase — framework checks instanceof.
          */
         MarginCalculationOperation.prototype.supportedRequestType = function () {
-            return function MarginCalculationOperationRequest() { return {}; };
+            return MarginCalculationOperationRequest;
         };
 
         /**
          * Single-parameter executeAsync — called by POS framework.
-         * Context is injected via this.context by the base class.
+         * this.context is set by ExtensionOperationRequestHandlerBase before calling.
          */
         MarginCalculationOperation.prototype.executeAsync = function (request) {
             var _this = this;
@@ -57,8 +70,8 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
                         : null;
 
                     if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-                        alert("No sales line found. Please select a product line first.");
-                        resolve({ canceled: true, data: void 0 });
+                        alert("No sales line found. Please add a product to the transaction first.");
+                        resolve({ canceled: false, data: { canceled: false } });
                         return;
                     }
 
@@ -97,10 +110,12 @@ define(["require", "exports", "PosApi/Create/Operations"], function (require, ex
                     if (nav && typeof nav.navigate === "function") {
                         nav.navigate("MarginCalculationView", marginResult);
                     } else {
-                        alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %");
+                        alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %\n"
+                            + "Item: " + itemId + "\n"
+                            + "Net Amount: " + netAmount.toFixed(2));
                     }
 
-                    resolve({ canceled: false, data: void 0 });
+                    resolve({ canceled: false, data: { canceled: false } });
                 } catch (ex) {
                     reject(ex);
                 }
