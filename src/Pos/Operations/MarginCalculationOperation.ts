@@ -1,23 +1,48 @@
 // ----------------------------------------------------------------------------
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
-// SDK 9.55: operation handlers must extend ExtensionOperationRequestHandlerBase
-// from PosApi/Create/Operations — the same pattern as views needing
-// CustomViewControllerBase from PosApi/Create/Views.
-// A plain class without this base fails the Pos.Controls.js instanceof check
-// and gives "operation is not supported".
+// SDK 9.55: Custom operation handler pattern.
+//
+// KEY FIX: supportedRequestType() MUST return the constructor of the request
+// class — NOT null.  Pos.Controls.js:18851 checks:
+//   if (!handler.supportedRequestType()) { throw CommerceError("not supported"); }
+// Returning null causes "operation is not supported" regardless of base class.
+//
+// The request class must extend Operations.OperationRequest (from
+// PosApi/Create/Operations). executeAsync takes (context, request).
+// ----------------------------------------------------------------------------
 import * as Operations from "PosApi/Create/Operations";
 import { ClientEntities } from "PosApi/Entities";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
-export default class MarginCalculationOperation
-    extends Operations.ExtensionOperationRequestHandlerBase<any> {
+// ---------------------------------------------------------------------------
+// Request class — required by ExtensionOperationRequestHandlerBase<T>.
+// T must extend Operations.OperationRequest.
+// ---------------------------------------------------------------------------
+export class MarginCalculationOperationRequest extends Operations.OperationRequest {
+    constructor(correlationId: string) {
+        super(correlationId);
+    }
+}
 
-    public supportedRequestType(): any {
-        return null;
+// ---------------------------------------------------------------------------
+// Handler class — registered in manifest operations[] for operationId 50001.
+// ---------------------------------------------------------------------------
+export default class MarginCalculationOperation
+    extends Operations.ExtensionOperationRequestHandlerBase<MarginCalculationOperationRequest> {
+
+    /**
+     * SDK REQUIREMENT: must return the constructor of the request type.
+     * Returning null → framework throws "operation is not supported".
+     */
+    public supportedRequestType(): Operations.ExtensionOperationRequestType<MarginCalculationOperationRequest> {
+        return MarginCalculationOperationRequest;
     }
 
-    public executeAsync(context: any): Promise<ClientEntities.ICancelableDataResult<void>> {
+    public executeAsync(
+        context: Operations.ExtensionOperationRequestHandlerBase.IContext,
+        request: MarginCalculationOperationRequest
+    ): Promise<ClientEntities.ICancelableDataResult<void>> {
 
         return new Promise<ClientEntities.ICancelableDataResult<void>>(
             (resolve: (value: ClientEntities.ICancelableDataResult<void>) => void,
@@ -28,8 +53,8 @@ export default class MarginCalculationOperation
                 // Step 1 — Resolve the active cart and selected cart line.
                 // In SDK 9.55 the cart is on context.cartAccessor.cart.
                 // ------------------------------------------------------------------
-                let cart: any = context && context.cartAccessor
-                    ? context.cartAccessor.cart
+                let cart: any = context && (context as any).cartAccessor
+                    ? (context as any).cartAccessor.cart
                     : null;
 
                 if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
@@ -76,9 +101,9 @@ export default class MarginCalculationOperation
                 // Step 3 — Navigate to the Margin Calculation view.
                 // SDK 9.55: context.navigator.navigate(pageName, state).
                 // ------------------------------------------------------------------
-                if (context && context.navigator
-                        && typeof context.navigator.navigate === "function") {
-                    context.navigator.navigate("MarginCalculationView", marginResult);
+                let nav: any = (context as any).navigator;
+                if (nav && typeof nav.navigate === "function") {
+                    nav.navigate("MarginCalculationView", marginResult);
                 } else {
                     alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %");
                 }
