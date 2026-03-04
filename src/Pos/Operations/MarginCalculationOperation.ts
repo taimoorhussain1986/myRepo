@@ -2,62 +2,60 @@
 // Copyright (c) Beaumont Commerce. All rights reserved.
 // ----------------------------------------------------------------------------
 //
-// NO imports that produce AMD require() calls at runtime.
-// "PosApi/Create/Operations" is NOT a resolvable runtime AMD bundle in
-// Store Commerce 9.55 — importing it causes the define() callback to never
-// fire, making the module invisible in F12 debugger.
+// "PosApi/Create/Operations" IS resolvable at runtime in Store Commerce 9.55
+// (same AMD bundle system as "PosApi/Create/Views" which works for the view).
 //
-// Commerce is injected by the POS framework into the global scope.
-// declare var makes it available for compile-time use without generating
-// any AMD dependency entry.
+// We use intermediate `any`-typed consts to bypass TypeScript's unsatisfiable
+// generic constraints (private _responseId, CRTP _t) on ExtensionOperationRequestBase
+// and ExtensionOperationRequestHandlerBase. At runtime the prototype chain is
+// set up correctly via __extends, so all instanceof checks pass.
 //
 declare var Commerce: any;
 
+import * as Operations from "PosApi/Create/Operations";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
+// Any-typed intermediates — bypass TypeScript private/CRTP generic constraints.
+const _ReqBase: any = (Operations as any).ExtensionOperationRequestBase;
+const _OpBase: any  = (Operations as any).ExtensionOperationRequestHandlerBase;
+
 // ---------------------------------------------------------------------------
-// Request class — plain class, no SDK base class needed at runtime.
-// The framework's check at Pos.Controls.js only verifies that
-// supportedRequestType() returns a truthy constructor (not instanceof).
+// Request class — extends ExtensionOperationRequestBase at runtime via __extends.
+// Required so that the framework's instanceof check passes in Pos.Controls.js.
 // ---------------------------------------------------------------------------
-class MarginCalculationOperationRequest {
-    public readonly operationId: number;
-    public readonly correlationId: string;
-    constructor(operationId: number, correlationId: string) {
-        this.operationId   = operationId;
-        this.correlationId = correlationId;
+class MarginCalculationOperationRequest extends _ReqBase {
+    constructor() {
+        super(50001, "margin-calculation-request");
     }
 }
 
 // ---------------------------------------------------------------------------
-// Operation handler — registered in manifest operations[].
-// Plain class, no SDK base class, compiles to define(["require","exports"]).
+// Operation handler — registered in manifest components.extend.operations[].
+// Extends ExtensionOperationRequestHandlerBase at runtime via __extends.
 // ---------------------------------------------------------------------------
-export default class MarginCalculationOperation {
+export default class MarginCalculationOperation extends _OpBase {
 
-    /** Return the request constructor — must be truthy. */
+    /** Return the request constructor — must satisfy instanceof ExtensionOperationRequestBase. */
     public supportedRequestType(): any {
         return MarginCalculationOperationRequest;
     }
 
     /**
      * Called by the POS framework when operation 50001 fires.
-     * Context is injected as this.context by the framework before calling.
+     * this.context is a protected property set by the base class before calling.
      */
     public executeAsync(request: any): Promise<any> {
         return new Promise<any>((resolve: any, reject: any): void => {
             try {
                 // ---------------------------------------------------------------
-                // Step 1 — Get cart (try context first, then global).
+                // Step 1 — Get cart.
                 // ---------------------------------------------------------------
+                const ctx: any = (this as any).context;
                 let cart: any = null;
 
-                // Try this.context first (SDK 9.55 standard)
-                const ctx: any = (this as any).context;
                 if (ctx && ctx.cartAccessor && ctx.cartAccessor.cart) {
                     cart = ctx.cartAccessor.cart;
-                } else if (Commerce && Commerce.Session && Commerce.Session.instance) {
-                    // Fallback: Retail SDK 7.x / Cloud POS globals
+                } else if (typeof Commerce !== "undefined" && Commerce.Session && Commerce.Session.instance) {
                     cart = Commerce.Session.instance.cart;
                 }
 
@@ -67,7 +65,6 @@ export default class MarginCalculationOperation {
                     return;
                 }
 
-                // Prefer the highlighted line; fall back to first line.
                 const selectedId: string = cart.SelectedCartLineId || "";
                 const cartLine: any = cart.CartLines.filter(
                     (l: any): boolean => l.LineId === selectedId
@@ -76,13 +73,12 @@ export default class MarginCalculationOperation {
                 const itemId: string    = cartLine.ItemId   || "";
                 const quantity: number  = cartLine.Quantity || 0;
                 const netAmount: number = cartLine.NetAmountWithAllInclusiveTax
-                                       || cartLine.NetAmount
-                                       || 0;
+                                       || cartLine.NetAmount || 0;
 
                 // ---------------------------------------------------------------
-                // Step 2 — Phase 1: purchasePrice = 0 (replace in Phase 2).
+                // Step 2 — Phase 1: purchasePrice = 0 (Phase 2: CRT call).
                 // ---------------------------------------------------------------
-                const purchasePrice: number = 0;
+                const purchasePrice: number    = 0;
                 const totalCost: number        = purchasePrice * Math.abs(quantity);
                 const marginAmount: number     = netAmount - totalCost;
                 const marginPercentage: number = netAmount !== 0
@@ -90,29 +86,19 @@ export default class MarginCalculationOperation {
                     : 0;
 
                 const marginResult: IMarginCalculationResult = {
-                    itemId,
-                    purchasePrice,
-                    quantity,
-                    netAmount,
-                    totalCost,
-                    marginAmount,
-                    marginPercentage
+                    itemId, purchasePrice, quantity, netAmount,
+                    totalCost, marginAmount, marginPercentage
                 };
 
                 // ---------------------------------------------------------------
-                // Step 3 — Navigate to the Margin Calculation view.
+                // Step 3 — Navigate to Margin Calculation view.
                 // ---------------------------------------------------------------
-                // Try SDK 9.55 context navigator first.
                 if (ctx && ctx.navigator && typeof ctx.navigator.navigate === "function") {
                     ctx.navigator.navigate("MarginCalculationView", marginResult);
-                } else if (Commerce && Commerce.Host && Commerce.Host.instance) {
-                    // Fallback: Cloud POS / Retail SDK style navigation.
+                } else if (typeof Commerce !== "undefined" && Commerce.Host && Commerce.Host.instance) {
                     Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
                 } else {
-                    // Final fallback: display summary in alert.
-                    alert("Margin: " + marginPercentage.toFixed(2) + " %\n"
-                        + "Item: " + itemId + "\n"
-                        + "Net: " + netAmount.toFixed(2));
+                    alert("Margin: " + marginPercentage.toFixed(2) + " %\nItem: " + itemId);
                 }
 
                 resolve({ canceled: false, data: {} });
