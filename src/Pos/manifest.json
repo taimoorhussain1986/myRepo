@@ -114,6 +114,12 @@
           "description": "PostShipFulfillmentLinesTrigger",
           "modulePath": "TriggerHandlers/PostShipFulfillmentLinesTrigger",
           "triggerType": "PostShipFulfillmentLines"
+        },
+        {
+          "name": "MarginCalculationPreOperationTrigger",
+          "description": "Handles op 50001 - Margin Calculation",
+          "triggerType": "PreOperation",
+          "modulePath": "TriggerHandlers/MarginCalculationPreOperationTrigger"
         }
       ],
       "requestHandlers": [
@@ -126,12 +132,6 @@
           "name": "GetShippingDateClientRequestHandlerExt",
           "description": "GetShippingDateClientRequestHandlerExt",
           "modulePath": "Handlers/GetShippingDateClientRequestHandlerExt"
-        }
-      ],
-      "operations": [
-        {
-          "operationId": 50001,
-          "operationRequestHandlerPath": "Operations/MarginCalculationOperation"
         }
       ]
     },
