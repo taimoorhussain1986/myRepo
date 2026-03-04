@@ -1,129 +1,113 @@
 // Pre-compiled AMD module - copy directly to Store Commerce Extensions.
 // Source: src/Pos/Operations/MarginCalculationOperation.ts
-define(["require", "exports", "PosApi/Create/Operations"], function (require, exports, Create_Operations_1) {
+//
+// KEY: only ["require","exports"] as AMD deps — "PosApi/Create/Operations"
+// is NOT resolvable at runtime in Store Commerce 9.55. Including it caused
+// the define() callback to never fire, making the module invisible in F12.
+define(["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    var __extends = (this && this.__extends) || (function () {
-        var extendStatics = function (d, b) {
-            extendStatics = Object.setPrototypeOf ||
-                ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-                function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-            return extendStatics(d, b);
-        };
-        return function (d, b) {
-            if (typeof b !== "function" && b !== null) {
-                throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-            }
-            extendStatics(d, b);
-            function __() { this.constructor = d; }
-            d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-        };
-    })();
 
-    // Intermediate variables to bypass SDK generic constraints at compile time.
-    // Runtime prototype chain is identical to proper inheritance.
-    var _OpBase = Create_Operations_1.ExtensionOperationRequestHandlerBase;
-    var _ReqBase = Create_Operations_1.ExtensionOperationRequestBase;
+    // -----------------------------------------------------------------------
+    // Request constructor — plain function, no SDK base class.
+    // -----------------------------------------------------------------------
+    function MarginCalculationOperationRequest(operationId, correlationId) {
+        this.operationId   = operationId;
+        this.correlationId = correlationId;
+    }
 
-    // -------------------------------------------------------------------------
-    // Request class — must extend ExtensionOperationRequestBase so the
-    // framework's instanceof check in Pos.Controls.js passes.
-    // -------------------------------------------------------------------------
-    var MarginCalculationOperationRequest = /** @class */ (function (_super) {
-        __extends(MarginCalculationOperationRequest, _super);
-        function MarginCalculationOperationRequest(correlationId) {
-            return _super.call(this, 50001, correlationId) || this;
-        }
+    // -----------------------------------------------------------------------
+    // Operation handler class — registered in manifest operations[].
+    // -----------------------------------------------------------------------
+    function MarginCalculationOperation() {}
+
+    /** Return the request constructor — must be truthy. */
+    MarginCalculationOperation.prototype.supportedRequestType = function () {
         return MarginCalculationOperationRequest;
-    }(_ReqBase));
+    };
 
-    // -------------------------------------------------------------------------
-    // Handler class — registered in manifest operations[] for operationId 50001.
-    // -------------------------------------------------------------------------
-    var MarginCalculationOperation = /** @class */ (function (_super) {
-        __extends(MarginCalculationOperation, _super);
-        function MarginCalculationOperation() {
-            return _super !== null && _super.apply(this, arguments) || this;
-        }
+    /**
+     * Called by POS framework when operation 50001 fires.
+     * this.context is injected by the framework before calling executeAsync.
+     */
+    MarginCalculationOperation.prototype.executeAsync = function (request) {
+        var _this = this;
+        return new Promise(function (resolve, reject) {
+            try {
+                // -------------------------------------------------------
+                // Step 1 — Get cart (try context first, then global).
+                // -------------------------------------------------------
+                var cart = null;
+                var ctx  = _this.context;
 
-        /**
-         * Return the request constructor whose prototype inherits from
-         * ExtensionOperationRequestBase — framework checks instanceof.
-         */
-        MarginCalculationOperation.prototype.supportedRequestType = function () {
-            return MarginCalculationOperationRequest;
-        };
-
-        /**
-         * Single-parameter executeAsync — called by POS framework.
-         * this.context is set by ExtensionOperationRequestHandlerBase before calling.
-         */
-        MarginCalculationOperation.prototype.executeAsync = function (request) {
-            var _this = this;
-            return new Promise(function (resolve, reject) {
-                try {
-                    var context = _this.context;
-
-                    // Step 1: Get current cart from context.cartAccessor.cart
-                    var cart = context && context.cartAccessor
-                        ? context.cartAccessor.cart
-                        : null;
-
-                    if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
-                        alert("No sales line found. Please add a product to the transaction first.");
-                        resolve({ canceled: false, data: { canceled: false } });
-                        return;
-                    }
-
-                    // Prefer selected line; fall back to first line.
-                    var selectedId = cart.SelectedCartLineId || "";
-                    var cartLine = cart.CartLines.filter(function (l) {
-                        return l.LineId === selectedId;
-                    })[0] || cart.CartLines[0];
-
-                    var itemId = cartLine.ItemId || "";
-                    var quantity = cartLine.Quantity || 0;
-                    var netAmount = cartLine.NetAmountWithAllInclusiveTax
-                        || cartLine.NetAmount
-                        || 0;
-
-                    // Step 2: Phase 1 — purchasePrice = 0.
-                    var purchasePrice = 0;
-                    var totalCost = purchasePrice * Math.abs(quantity);
-                    var marginAmount = netAmount - totalCost;
-                    var marginPercentage = netAmount !== 0
-                        ? (marginAmount / netAmount) * 100
-                        : 0;
-
-                    var marginResult = {
-                        itemId: itemId,
-                        purchasePrice: purchasePrice,
-                        quantity: quantity,
-                        netAmount: netAmount,
-                        totalCost: totalCost,
-                        marginAmount: marginAmount,
-                        marginPercentage: marginPercentage
-                    };
-
-                    // Step 3: Navigate to Margin Calculation view.
-                    var nav = context && context.navigator;
-                    if (nav && typeof nav.navigate === "function") {
-                        nav.navigate("MarginCalculationView", marginResult);
-                    } else {
-                        alert("Margin: " + marginResult.marginPercentage.toFixed(2) + " %\n"
-                            + "Item: " + itemId + "\n"
-                            + "Net Amount: " + netAmount.toFixed(2));
-                    }
-
-                    resolve({ canceled: false, data: { canceled: false } });
-                } catch (ex) {
-                    reject(ex);
+                if (ctx && ctx.cartAccessor && ctx.cartAccessor.cart) {
+                    cart = ctx.cartAccessor.cart;
+                } else if (typeof Commerce !== "undefined"
+                        && Commerce.Session
+                        && Commerce.Session.instance) {
+                    cart = Commerce.Session.instance.cart;
                 }
-            });
-        };
 
-        return MarginCalculationOperation;
-    }(_OpBase));
+                if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
+                    alert("No sales line found. Please add a product to the transaction first.");
+                    resolve({ canceled: false, data: {} });
+                    return;
+                }
+
+                // Prefer highlighted line; fall back to first line.
+                var selectedId = cart.SelectedCartLineId || "";
+                var cartLine   = cart.CartLines.filter(function (l) {
+                    return l.LineId === selectedId;
+                })[0] || cart.CartLines[0];
+
+                var itemId    = cartLine.ItemId   || "";
+                var quantity  = cartLine.Quantity || 0;
+                var netAmount = cartLine.NetAmountWithAllInclusiveTax
+                              || cartLine.NetAmount
+                              || 0;
+
+                // -------------------------------------------------------
+                // Step 2 — Phase 1: purchasePrice = 0.
+                // -------------------------------------------------------
+                var purchasePrice    = 0;
+                var totalCost        = purchasePrice * Math.abs(quantity);
+                var marginAmount     = netAmount - totalCost;
+                var marginPercentage = netAmount !== 0
+                    ? (marginAmount / netAmount) * 100
+                    : 0;
+
+                var marginResult = {
+                    itemId:           itemId,
+                    purchasePrice:    purchasePrice,
+                    quantity:         quantity,
+                    netAmount:        netAmount,
+                    totalCost:        totalCost,
+                    marginAmount:     marginAmount,
+                    marginPercentage: marginPercentage
+                };
+
+                // -------------------------------------------------------
+                // Step 3 — Navigate to Margin Calculation view.
+                // -------------------------------------------------------
+                if (ctx && ctx.navigator && typeof ctx.navigator.navigate === "function") {
+                    ctx.navigator.navigate("MarginCalculationView", marginResult);
+                } else if (typeof Commerce !== "undefined"
+                        && Commerce.Host
+                        && Commerce.Host.instance) {
+                    Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
+                } else {
+                    alert("Margin: " + marginPercentage.toFixed(2) + " %\n"
+                        + "Item: "  + itemId + "\n"
+                        + "Net: "   + netAmount.toFixed(2));
+                }
+
+                resolve({ canceled: false, data: {} });
+            } catch (ex) {
+                console.error("[MarginCalculationOperation] executeAsync error:", ex);
+                reject(ex);
+            }
+        });
+    };
 
     exports["default"] = MarginCalculationOperation;
     return MarginCalculationOperation;
