@@ -136,6 +136,12 @@
       ]
     },
     "create": {
+      "operationRequestFactories": [
+        {
+          "operationId": 50001,
+          "requestFactoryPath": "Operations/MarginCalculationOperationRequestFactory"
+        }
+      ],
       "views": [
         {
           "description": "Batch View",

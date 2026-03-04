@@ -27,9 +27,17 @@ define(["require", "exports"], function (require, exports) {
     function MarginCalculationPreOperationTrigger() {}
 
     MarginCalculationPreOperationTrigger.prototype.execute = function (options) {
-        // Only intercept op 50001.
-        if (!options || options.operationId !== MARGIN_OPERATION_ID) {
-            return Promise.resolve({ canceled: false, data: undefined });
+        // SDK 9.55: operation ID is at options.request.operationId
+        // (older SDKs used options.operationId directly — check both).
+        var opId = (options && options.request && options.request.operationId)
+                || (options && options.operationId)
+                || 0;
+
+        console.log("[MarginCalcTrigger] execute called, opId =", opId,
+                    "options.request =", options && options.request);
+
+        if (opId !== MARGIN_OPERATION_ID) {
+            return Promise.resolve({ canceled: false });
         }
 
         var _this = this;

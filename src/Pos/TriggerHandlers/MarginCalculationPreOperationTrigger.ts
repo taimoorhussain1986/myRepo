@@ -42,12 +42,16 @@ export default class MarginCalculationPreOperationTrigger {
 
     /**
      * Called by the framework before every operation.
-     * @param options  Framework-provided options object with `operationId`.
+     * @param options  IPreOperationOptions – contains `request.operationId`.
      */
     public execute(options: any): Promise<any> {
-        // Only intercept our custom operation.
-        if (!options || options.operationId !== MARGIN_OPERATION_ID) {
-            return Promise.resolve({ canceled: false, data: undefined });
+        // In SDK 9.55 the operation ID is on options.request.operationId.
+        // Fall back to options.operationId for older SDK versions.
+        const opId: number = (options && options.request && options.request.operationId)
+            || (options && options.operationId)
+            || 0;
+        if (opId !== MARGIN_OPERATION_ID) {
+            return Promise.resolve({ canceled: false });
         }
 
         return new Promise<any>((resolve: any): void => {
