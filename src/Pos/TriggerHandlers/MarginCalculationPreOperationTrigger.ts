@@ -4,16 +4,8 @@
 //
 // PreOperation trigger for Margin Calculation (operation ID 50001).
 //
-// WHY A TRIGGER INSTEAD OF AN OPERATION HANDLER:
-//   The manifest `components.extend.operations` key lazy-loads the handler
-//   module only when the button fires.  In Store Commerce 9.55, the AMD
-//   require issued at that moment fails silently when the module depends on
-//   `PosApi/Create/Operations`, so the module is never visible in the F12
-//   debugger and the framework falls back to "operation not supported".
-//
-//   PreOperation triggers are PRE-LOADED by the manifest processor along with
-//   all other triggers at startup.  They are always in the AMD module registry
-//   before any button is pressed.
+// MUST extend Triggers.PreOperationTrigger — Store Commerce 9.55 validates the
+// prototype chain and rejects triggers that do not inherit from the correct base.
 //
 // REGISTRATION (manifest.json):
 //   Add to components.extend.triggers:
@@ -25,9 +17,9 @@
 //   }
 //
 // Commerce global is injected by the POS framework at runtime.
-// `declare var Commerce: any` keeps TypeScript happy without a global.d.ts.
 declare var Commerce: any;
 
+import * as Triggers from "PosApi/Extend/Triggers/OperationTriggers";
 import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
 
 /** Operation ID assigned in HQ POS Operations and button layout. */
@@ -38,35 +30,36 @@ const MARGIN_OPERATION_ID: number = 50001;
  * for the active (or first) cart line, navigates to MarginCalculationView and
  * cancels the original operation so the blank-operation fallback never fires.
  */
-export default class MarginCalculationPreOperationTrigger {
+export default class MarginCalculationPreOperationTrigger extends Triggers.PreOperationTrigger {
+
+    constructor() {
+        super();
+    }
 
     /**
      * Called by the framework before every operation.
      * @param options  IPreOperationOptions – contains `request.operationId`.
      */
-    public execute(options: any): Promise<any> {
-        // In SDK 9.55 the operation ID is on options.request.operationId.
-        // Fall back to options.operationId for older SDK versions.
-        const opId: number = (options && options.request && options.request.operationId)
-            || (options && options.operationId)
+    public execute(options: Triggers.IPreOperationTriggerOptions): Promise<Triggers.IHaltCondition> {
+        const opId: number = (options && options.request && (options.request as any).operationId)
             || 0;
+
         if (opId !== MARGIN_OPERATION_ID) {
-            return Promise.resolve({ canceled: false });
+            return Promise.resolve({ halt: false });
         }
 
-        return new Promise<any>((resolve: any): void => {
+        const ctx: any = this.context;
+
+        return new Promise<Triggers.IHaltCondition>((resolve: any): void => {
             try {
                 // ------------------------------------------------------------------
                 // Step 1 — Get the current cart.
                 // ------------------------------------------------------------------
                 let cart: any = null;
 
-                // Try the context accessor first (SDK 9.55 recommended).
-                const ctx: any = (this as any).context;
                 if (ctx && ctx.cartAccessor && ctx.cartAccessor.cart) {
                     cart = ctx.cartAccessor.cart;
                 }
-                // Fall back to the global Commerce namespace (always available).
                 if (!cart && typeof Commerce !== "undefined"
                         && Commerce.Session && Commerce.Session.instance) {
                     cart = Commerce.Session.instance.cart;
@@ -74,7 +67,7 @@ export default class MarginCalculationPreOperationTrigger {
 
                 if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
                     alert("Margin Calculation: Please add a product to the transaction first.");
-                    resolve({ canceled: true, data: undefined });
+                    resolve({ halt: true });
                     return;
                 }
 
@@ -92,10 +85,7 @@ export default class MarginCalculationPreOperationTrigger {
                                        || cartLine.NetAmount || 0;
 
                 // ------------------------------------------------------------------
-                // Step 3 — Calculate margin.
-                // Phase 1: purchase price = 0 (hard-coded placeholder).
-                // Phase 2: replace with a CRT/Retail Server proxy call to fetch
-                //          the actual purchase price from InventTableModule.
+                // Step 3 — Calculate margin (Phase 1: purchasePrice = 0 placeholder).
                 // ------------------------------------------------------------------
                 const purchasePrice: number    = 0;
                 const totalCost: number        = purchasePrice * Math.abs(quantity);
@@ -112,33 +102,24 @@ export default class MarginCalculationPreOperationTrigger {
                 // ------------------------------------------------------------------
                 // Step 4 — Navigate to the Margin Calculation view.
                 // ------------------------------------------------------------------
-                // Primary: SDK 9.55 recommended navigator (if context is available).
                 if (ctx && ctx.navigator && typeof ctx.navigator.navigate === "function") {
                     ctx.navigator.navigate("MarginCalculationView", marginResult);
-                }
-                // Fallback: global Commerce.Host (always available in Store Commerce).
-                else if (typeof Commerce !== "undefined"
+                } else if (typeof Commerce !== "undefined"
                          && Commerce.Host && Commerce.Host.instance
                          && typeof Commerce.Host.instance.navigateToView === "function") {
                     Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
-                }
-                // Last resort: show a plain alert with the key figures.
-                else {
+                } else {
                     alert("Margin Calculation\n"
                         + "Item:   " + itemId + "\n"
                         + "Net:    " + netAmount.toFixed(2) + "\n"
                         + "Margin: " + marginPercentage.toFixed(2) + " %");
                 }
 
-                // Cancel the original operation so the framework does not try
-                // to execute the (non-existent) operation handler and throw
-                // "operation not supported".
-                resolve({ canceled: true, data: undefined });
+                resolve({ halt: true });
 
             } catch (ex) {
                 console.error("[MarginCalcTrigger] execute error:", ex);
-                // Resolve as canceled so we don't bubble an unhandled rejection.
-                resolve({ canceled: true, data: undefined });
+                resolve({ halt: true });
             }
         });
     }
