@@ -39,8 +39,10 @@ define(["require", "exports", "PosApi/Extend/Triggers/OperationTriggers"], funct
     var MarginCalculationPreOperationTrigger = /** @class */ (function (_super) {
         __extends(MarginCalculationPreOperationTrigger, _super);
 
+        // No explicit constructor — TypeScript auto-pattern: forwards all args to base.
+        // This ensures the framework-provided context argument reaches PreOperationTrigger.
         function MarginCalculationPreOperationTrigger() {
-            return _super.call(this) || this;
+            return _super !== null && _super.apply(this, arguments) || this;
         }
 
         MarginCalculationPreOperationTrigger.prototype.execute = function (options) {

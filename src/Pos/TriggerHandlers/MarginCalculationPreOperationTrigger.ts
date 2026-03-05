@@ -32,15 +32,13 @@ const MARGIN_OPERATION_ID: number = 50001;
  */
 export default class MarginCalculationPreOperationTrigger extends Triggers.PreOperationTrigger {
 
-    constructor() {
-        super();
-    }
-
     /**
      * Called by the framework before every operation.
+     * No constructor — TypeScript auto-generates one that forwards all
+     * framework-provided arguments (including context) to the base class.
      * @param options  IPreOperationOptions – contains `request.operationId`.
      */
-    public execute(options: Triggers.IPreOperationTriggerOptions): Promise<Triggers.IHaltCondition> {
+    public execute(options: Triggers.IPreOperationTriggerOptions): any {
         const opId: number = (options && options.request && (options.request as any).operationId)
             || 0;
 
