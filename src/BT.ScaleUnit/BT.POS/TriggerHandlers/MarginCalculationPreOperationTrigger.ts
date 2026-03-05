@@ -7,13 +7,8 @@
  * cashier is notified.
  */
 
-import {
-    IPreOperationTrigger,
-    IPreOperationTriggerOptions,
-    IHaltCondition,
-    PreOperationTrigger
-} from "PosApi/Extend/Triggers/OperationTriggers";
-import { OperationType, ClientEntities } from "PosApi/Entities";
+import * as Triggers from "PosApi/Extend/Triggers/OperationTriggers";
+import { OperationType } from "PosApi/Entities";
 import { ObjectExtensions } from "PosApi/TypeExtensions";
 
 /**
@@ -29,7 +24,7 @@ const MINIMUM_MARGIN_PERCENT: number = 10;
  * Register this trigger in your extension manifest under the
  * "triggers" section using the key "PreOperationTrigger".
  */
-export default class MarginCalculationPreOperationTrigger extends PreOperationTrigger {
+export default class MarginCalculationPreOperationTrigger extends Triggers.PreOperationTrigger {
 
     /**
      * The set of POS operations this trigger is subscribed to.
@@ -45,18 +40,18 @@ export default class MarginCalculationPreOperationTrigger extends PreOperationTr
     /**
      * Executes the margin validation logic before the operation runs.
      *
-     * @param {IPreOperationTriggerOptions} options - Context options for the
+     * @param {Triggers.IPreOperationTriggerOptions} options - Context options for the
      *        operation that is about to execute.
-     * @returns {Promise<IHaltCondition>} A promise that resolves to an
+     * @returns {Promise<Triggers.IHaltCondition>} A promise that resolves to an
      *          IHaltCondition indicating whether the operation should proceed.
      *          When `canceled` is true, the operation is halted.
      */
-    public execute(options: IPreOperationTriggerOptions): Promise<IHaltCondition> {
+    public execute(options: Triggers.IPreOperationTriggerOptions): Promise<Triggers.IHaltCondition> {
         if (ObjectExtensions.isNullOrUndefined(options)) {
-            return Promise.resolve<IHaltCondition>({ canceled: false });
+            return Promise.resolve<Triggers.IHaltCondition>({ canceled: false });
         }
 
-        let haltCondition: IHaltCondition;
+        let haltCondition: Triggers.IHaltCondition;
 
         try {
             let marginIsAcceptable: boolean = this._validateMargin(options);
@@ -74,19 +69,19 @@ export default class MarginCalculationPreOperationTrigger extends PreOperationTr
             haltCondition = { canceled: false };
         }
 
-        return Promise.resolve<IHaltCondition>(haltCondition);
+        return Promise.resolve<Triggers.IHaltCondition>(haltCondition);
     }
 
     /**
      * Validates that the proposed operation will not reduce the product margin
      * below the configured minimum.
      *
-     * @param {IPreOperationTriggerOptions} options - Operation options providing
+     * @param {Triggers.IPreOperationTriggerOptions} options - Operation options providing
      *        context about the price/discount change being requested.
      * @returns {boolean} True if the resulting margin is acceptable; false if
      *          the operation should be halted.
      */
-    private _validateMargin(options: IPreOperationTriggerOptions): boolean {
+    private _validateMargin(options: Triggers.IPreOperationTriggerOptions): boolean {
         if (ObjectExtensions.isNullOrUndefined(options.operationOptions)) {
             return true;
         }
