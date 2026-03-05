@@ -1,0 +1,185 @@
+{
+  "$schema": "./devDependencies/schemas/manifestSchema.json",
+  "name": "Beaumont.Commerce",
+  "publisher": "Sonata",
+  "version": "7.2.0",
+  "minimumPosVersion": "7.2.1746.0",
+  "dependencies": [
+    {
+      "alias": "knockout",
+      "format": "amd",
+      "modulePath": "Libraries/knockout"
+    }
+  ],
+  "components": {
+    "extend": {
+      "views": {
+        "InventoryLookupView": {
+          "inventoryByStoreListConfiguration": {
+            "description": "Inventory Loop Up",
+            "name": "Inventory Look Up",
+            "modulePath": "ViewExtensions/InventoryLookup/CustomInventoryByStoreListColumns"
+          },
+          "appBarCommands": [
+            {
+              "modulePath": "ViewExtensions/InventoryLookup/BatchViewCommand",
+              "description": "Batch",
+              "name": "Batch"
+            }
+          ]
+        },
+        "CartView": {
+          "totalsPanel": {
+            "customFields": [
+              {
+                "name": "Outstanding",
+                "description": "Outstanding field",
+                "fieldName": "Outstanding",
+                "modulePath": "ColumnExtensions/TotalPanel/OutstandingField"
+              }
+            ]
+          },
+          "viewController": {
+            "modulePath": "ViewExtensions/Cart/CartViewController",
+            "description": "Cart Controller",
+            "name": "cart controller"
+          }
+        },
+        "ShowJournalView": {
+          "appBarCommands": [
+            {
+              "description": "ShowJournalPrint",
+              "name": "ShowJournalPrint",
+              "modulePath": "ViewExtensions/ShowJournal/DownloadDocumentCommand"
+            }
+          ]
+        },
+        "FulfillmentLineView": {
+          "fulfillmentLinesListConfiguration": {
+            "modulePath": "ViewExtensions/FulfillmentLines/FulfillmentLinesListColumn"
+          }
+        }
+      },
+      "triggers": [
+        {
+          "description": "Bind knockout js",
+          "name": "KnockoutBinding",
+          "triggerType": "ApplicationStart",
+          "modulePath": "TriggerHandlers/ApplicationStartTrigger"
+        },
+        {
+          "description": "PreProductSale",
+          "name": "PreProductSale",
+          "triggerType": "PreProductSale",
+          "modulePath": "FDD002_UOM/Trigger/BT_PreProductTrigger"
+        },
+        {
+          "description": "PreSetQuantity",
+          "name": "PreSetQuantity",
+          "triggerType": "PreSetQuantity",
+          "modulePath": "FDD002_UOM/Trigger/BT_PreSetQuantityTrigger"
+        },
+        {
+          "description": "PostLogon",
+          "name": "PostLogon",
+          "triggerType": "PostLogon",
+          "modulePath": "TriggerHandlers/PostLogonTrigger"
+        },
+        {
+          "description": "PostOperation",
+          "name": "Post Operation",
+          "triggerType": "PostOperation",
+          "modulePath": "TriggerHandlers/PostOperationTrigger"
+        },
+        {
+          "description": "PreOperation",
+          "name": "Pre Operation",
+          "triggerType": "PreOperation",
+          "modulePath": "TriggerHandlers/PreOperationTrigger"
+        },
+        {
+          "name": "PreEndTransactionTrigger",
+          "description": "PreEndTransactionTrigger",
+          "modulePath": "TriggerHandlers/PreEndTransactionTrigger",
+          "triggerType": "PreEndTransaction"
+        },
+        {
+          "name": "PostEndTransactionTrigger",
+          "description": "PostEndTransactionTrigger",
+          "modulePath": "TriggerHandlers/PostEndTransactionTrigger",
+          "triggerType": "PostEndTransaction"
+        },
+        {
+          "name": "PostShipFulfillmentLinesTrigger",
+          "description": "PostShipFulfillmentLinesTrigger",
+          "modulePath": "TriggerHandlers/PostShipFulfillmentLinesTrigger",
+          "triggerType": "PostShipFulfillmentLines"
+        },
+        {
+          "name": "MarginCalculationPreOperationTrigger",
+          "description": "Handles op 50001 - Margin Calculation",
+          "triggerType": "PreOperation",
+          "modulePath": "TriggerHandlers/MarginCalculationPreOperationTrigger"
+        }
+      ],
+      "requestHandlers": [
+        {
+          "name": "GetPickupDateClientRequestHandlerExt",
+          "description": "GetPickupDateClientRequestHandlerExt",
+          "modulePath": "Handlers/GetPickupDateClientRequestHandlerExt"
+        },
+        {
+          "name": "GetShippingDateClientRequestHandlerExt",
+          "description": "GetShippingDateClientRequestHandlerExt",
+          "modulePath": "Handlers/GetShippingDateClientRequestHandlerExt"
+        }
+      ]
+    },
+    "create": {
+      "operationRequestFactories": [
+        {
+          "operationId": 50001,
+          "requestFactoryPath": "Operations/MarginCalculationOperationRequestFactory"
+        }
+      ],
+      "views": [
+        {
+          "description": "Batch View",
+          "name": "Batch View",
+          "title": "BatchView",
+          "pageName": "BatchView",
+          "phonePageName": "BatchView",
+          "viewDirectory": "Views/",
+          "viewControllerPath": "Views/BatchView"
+        },
+        {
+          "description": "ReceiptView",
+          "name": "ReceiptView",
+          "pageName": "ReceiptView",
+          "viewControllerPath": "Views/ReceiptView",
+          "viewDirectory": "Views/",
+          "phonePageName": "ReceiptView",
+          "title": "ReceiptView"
+        },
+        {
+          "description": "UOMView",
+          "name": "UOMView",
+          "title": "Pack Conversion",
+          "pageName": "BT_UOMConversionView",
+          "phonePageName": "BT_UOMConversionView",
+          "viewDirectory": "FDD002_UOM/Views/",
+          "viewControllerPath": "FDD002_UOM/Views/BT_UOMConversionView"
+        },
+        {
+          "description": "Margin Calculation View",
+          "name": "MarginCalculationView",
+          "title": "Margin Calculation",
+          "pageName": "MarginCalculationView",
+          "phonePageName": "MarginCalculationView",
+          "viewDirectory": "Views/",
+          "viewControllerPath": "Views/MarginCalculationView"
+        }
+      ]
+    }
+  }
+}

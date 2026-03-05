@@ -1,0 +1,158 @@
+<!--
+  MarginCalculationView.html
+  Companion HTML template for MarginCalculationViewController.ts
+
+  Knockout data-bind attributes are resolved against the view-controller
+  instance at runtime by the POS framework.
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    /* ---------------------------------------------------------------
+       Margin Calculation View – scoped styles
+    --------------------------------------------------------------- */
+    .margin-view-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 24px;
+      font-family: "Segoe UI", sans-serif;
+      background-color: #f4f4f4;
+      min-width: 480px;
+    }
+
+    .margin-view-title {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #323130;
+    }
+
+    .margin-item-label {
+      font-size: 14px;
+      color: #605e5c;
+      margin-bottom: 20px;
+    }
+
+    .margin-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      width: 100%;
+      max-width: 520px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .kpi-card .kpi-label {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #605e5c;
+      letter-spacing: 0.04em;
+    }
+
+    .kpi-card .kpi-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #201f1e;
+    }
+
+    /* Margin KPI card colour variants */
+    .kpi-card.margin-positive { border-left: 4px solid #107c10; }
+    .kpi-card.margin-positive .kpi-value { color: #107c10; }
+
+    .kpi-card.margin-negative { border-left: 4px solid #d13438; }
+    .kpi-card.margin-negative .kpi-value { color: #d13438; }
+
+    /* Formula reminder */
+    .margin-formula {
+      font-size: 12px;
+      color: #8a8886;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    /* Close button */
+    .margin-close-btn {
+      padding: 10px 32px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      background-color: #0078d4;
+      color: #ffffff;
+      border: none;
+      border-radius: 4px;
+    }
+    .margin-close-btn:hover { background-color: #106ebe; }
+  </style>
+</head>
+<body>
+  <div class="margin-view-container">
+
+    <div class="margin-view-title">Margin Calculation</div>
+
+    <!-- Item identifier -->
+    <div class="margin-item-label">
+      Item ID: <strong data-bind="text: itemId"></strong>
+    </div>
+
+    <!-- KPI grid -->
+    <div class="margin-grid">
+
+      <!-- Revenue (Net Amount from the sales line) -->
+      <div class="kpi-card">
+        <span class="kpi-label">Revenue (Net Amount)</span>
+        <span class="kpi-value" data-bind="text: netAmountDisplay"></span>
+      </div>
+
+      <!-- Cost (InventTableModule.Price × Qty) -->
+      <div class="kpi-card">
+        <span class="kpi-label">Purchase Price (unit)</span>
+        <span class="kpi-value" data-bind="text: purchasePriceDisplay"></span>
+      </div>
+
+      <!-- Total cost -->
+      <div class="kpi-card">
+        <span class="kpi-label">Total Cost (Price × Qty)</span>
+        <span class="kpi-value" data-bind="text: totalCostDisplay"></span>
+      </div>
+
+      <!-- Margin amount -->
+      <div class="kpi-card">
+        <span class="kpi-label">Margin Amount</span>
+        <span class="kpi-value" data-bind="text: marginAmountDisplay"></span>
+      </div>
+
+      <!-- Margin % – spans both columns, colour-coded -->
+      <div class="kpi-card" style="grid-column: span 2;"
+           data-bind="css: marginCssClass">
+        <span class="kpi-label">Margin %</span>
+        <span class="kpi-value" data-bind="text: marginPercentageDisplay"></span>
+      </div>
+
+    </div><!-- /.margin-grid -->
+
+    <!-- Formula reminder -->
+    <div class="margin-formula">
+      Formula: Margin % = (NetAmount &minus; InventTableModule.Price &times; Qty) &divide; NetAmount &times; 100
+    </div>
+
+    <!-- Close button -->
+    <button class="margin-close-btn"
+            data-bind="click: onClose">Close</button>
+
+  </div><!-- /.margin-view-container -->
+</body>
+</html>

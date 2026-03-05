@@ -1,0 +1,144 @@
+// ============================================================================
+// BT_CDXVendorApprovalChangeHandler
+// ============================================================================
+// PURPOSE
+// -------
+// Fixes the CDX incremental-sync gap for VendTable vendor-approval filtering.
+//
+// ROOT CAUSE
+// ----------
+// The auto-generated d_VendTable_224 / d_VendTable_226 methods in
+// RetailCDXChannelSpecificData_AX63 correctly populate ref2 with ONLY
+// 'BT Approved' / 'BT Preferred' vendors.
+//
+// However, when a vendor's BT_VendApprovalStatusId changes FROM an approved
+// status TO a non-approved status, the CDX change-tracking mechanism creates
+// a ref1 record for VendTable.  The d_method's filter then checks the CURRENT
+// status -- the vendor is no longer approved -- so it is NOT added to ref2.
+//
+// Result:
+//   Full sync (job 2004)  -> vendor is removed from the EPOS channel (correct)
+//   Incremental sync      -> no removal signal is sent; vendor STAYS in EPOS
+//                            until the next full sync (incorrect)
+//
+// FIX DESIGN
+// ----------
+// 1. Override VendTable.update() to detect status changes.
+//    When a vendor moves FROM an approved/preferred status TO anything else,
+//    insert a record into BT_CDXVendorPendingRemoval (a custom staging table).
+//
+// 2. Extend RetailCDXChannelSpecificData_AX63 with a new method
+//    d_VendTable_RemovedVendors() that, during EVERY incremental run:
+//    a) Reads pending-removal records for the current channel.
+//    b) Adds those RecIds to ref2 so the EPOS channel re-syncs them.
+//       The extraction step (i_VendTable) will fetch the current VendTable
+//       record; because the status is now non-approved the EPOS client will
+//       treat the incoming record according to its own "remove non-approved"
+//       logic.
+//       NOTE: if your EPOS client needs an explicit DELETE, integrate with
+//             RetailConnDatabaseUtility::deleteFromChannel() here instead.
+//    c) Marks those staging records as processed.
+//
+// HOW TO DEPLOY
+// -------------
+// Step 1  Create table  BT_CDXVendorPendingRemoval  (DDL in separate file).
+// Step 2  Add this class to your AX2012 project and compile.
+// Step 3  Override VendTable.update() to call
+//           BT_CDXVendorApprovalChangeHandler::onVendTableUpdated(orig, this);
+//         at the very end of the method (after super()).
+// Step 4  In RetailCDXChannelSpecificData_AX63.run() (generated class),
+//         add a call to BT_CDXChannelExtRunHelper::processRemovals(this, ...);
+//         at the end of the run() method body.
+//         Alternatively create a class extension (see
+//         BT_RetailCDXChannelSpecificData_Ext.xpp).
+// ============================================================================
+
+class BT_CDXVendorApprovalChangeHandler
+{
+}
+
+// ---------------------------------------------------------------------------
+// Static helpers
+// ---------------------------------------------------------------------------
+
+/// <summary>
+/// Returns true if the given status ID represents an approved/preferred vendor
+/// that is included in the CDX sync filter.
+/// </summary>
+/// <param name="_statusId">BT_VendApprovalStatusId to test.</param>
+public static boolean isApprovedStatus(BT_VendApprovalStatusId _statusId)
+{
+    return _statusId == 'BT Approved' || _statusId == 'BT Preferred';
+}
+
+/// <summary>
+/// Call this from VendTable.update() (after super()) to capture status changes.
+///
+/// When a vendor moves from an approved/preferred status to any other status,
+/// a pending-removal record is created for every active Retail channel so that
+/// the next incremental CDX sync can handle the removal.
+/// </summary>
+/// <param name="_orig">The original (pre-update) VendTable buffer.</param>
+/// <param name="_new">The updated (post-update) VendTable buffer.</param>
+public static void onVendTableUpdated(VendTable _orig, VendTable _new)
+{
+    // Only act when the approval status field actually changed.
+    if (_orig.BT_VendApprovalStatusId == _new.BT_VendApprovalStatusId)
+    {
+        return;
+    }
+
+    boolean wasApproved = BT_CDXVendorApprovalChangeHandler::isApprovedStatus(
+                              _orig.BT_VendApprovalStatusId);
+    boolean isApproved  = BT_CDXVendorApprovalChangeHandler::isApprovedStatus(
+                              _new.BT_VendApprovalStatusId);
+
+    if (wasApproved && !isApproved)
+    {
+        // Vendor is being removed from the approved list.
+        // Record a pending-removal entry for each active Retail channel.
+        BT_CDXVendorApprovalChangeHandler::insertPendingRemovals(
+            _new.RecId,
+            _new.AccountNum,
+            _orig.BT_VendApprovalStatusId,
+            _new.BT_VendApprovalStatusId);
+    }
+}
+
+/// <summary>
+/// Inserts one BT_CDXVendorPendingRemoval row per active Retail channel for
+/// the given vendor.
+/// </summary>
+private static void insertPendingRemovals(
+    RecId                  _vendTableRecId,
+    VendAccount            _accountNum,
+    BT_VendApprovalStatusId _oldStatus,
+    BT_VendApprovalStatusId _newStatus)
+{
+    RetailChannelTable       channelTable;
+    BT_CDXVendorPendingRemoval pending;
+
+    // Iterate over every active Retail channel that uses CDX.
+    while select channelTable
+        where channelTable.IsDisabled == NoYes::No
+    {
+        // Avoid duplicate entries for the same vendor+channel combination.
+        select firstonly pending
+            where pending.VendTableRecId == _vendTableRecId
+               && pending.RetailChannelRecId == channelTable.RecId
+               && pending.Processed == NoYes::No;
+
+        if (!pending.RecId)
+        {
+            pending.clear();
+            pending.VendTableRecId      = _vendTableRecId;
+            pending.VendAccount         = _accountNum;
+            pending.RetailChannelRecId  = channelTable.RecId;
+            pending.OldApprovalStatus   = _oldStatus;
+            pending.NewApprovalStatus   = _newStatus;
+            pending.ChangedDateTime     = DateTimeUtil::utcNow();
+            pending.Processed           = NoYes::No;
+            pending.insert();
+        }
+    }
+}
