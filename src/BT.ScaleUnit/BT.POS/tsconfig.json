@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "noImplicitAny": true,
+        "noEmitOnError": true,
+        "removeComments": false,
+        "sourceMap": true,
+        "target": "ES5",
+        "module": "amd",
+        "moduleResolution": "node",
+        "baseUrl": ".",
+        "paths": {
+            "PosApi/*": [
+                "PosApi/*"
+            ]
+        },
+        "outDir": "../../dist/BT.POS",
+        "rootDir": ".",
+        "experimentalDecorators": true,
+        "lib": [
+            "dom",
+            "es2015.promise",
+            "es5"
+        ],
+        "strict": false
+    },
+    "include": [
+        "TriggerHandlers/**/*.ts",
+        "Pos.Api.d.ts"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}
