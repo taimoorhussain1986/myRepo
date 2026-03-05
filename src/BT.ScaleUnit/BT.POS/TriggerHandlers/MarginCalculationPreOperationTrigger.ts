@@ -1,96 +1,124 @@
-/**
- * MarginCalculationPreOperationTrigger.ts
- *
- * Pre-operation trigger that validates the profit margin of cart lines
- * before a POS operation is executed. If any cart line falls below the
- * configured minimum margin threshold, the operation is halted and the
- * cashier is notified.
- */
+// ----------------------------------------------------------------------------
+// Copyright (c) Beaumont Commerce. All rights reserved.
+// ----------------------------------------------------------------------------
+//
+// PreOperation trigger for Margin Calculation (operation ID 50001).
+//
+// MUST extend Triggers.PreOperationTrigger — Store Commerce 9.55 validates the
+// prototype chain and rejects triggers that do not inherit from the correct base.
+//
+// REGISTRATION (manifest.json):
+//   Add to components.extend.triggers:
+//   {
+//     "name":        "MarginCalculationPreOperationTrigger",
+//     "description": "Handles op 50001 – Margin Calculation",
+//     "triggerType": "PreOperation",
+//     "modulePath":  "TriggerHandlers/MarginCalculationPreOperationTrigger"
+//   }
+//
+// Commerce global is injected by the POS framework at runtime.
+declare var Commerce: any;
 
 import * as Triggers from "PosApi/Extend/Triggers/OperationTriggers";
-import { OperationType } from "PosApi/Entities";
-import { ObjectExtensions } from "PosApi/TypeExtensions";
+import type { IMarginCalculationResult } from "../Messages/GetMarginCalculationResponse";
+
+/** Operation ID assigned in HQ POS Operations and button layout. */
+const MARGIN_OPERATION_ID: number = 50001;
 
 /**
- * Minimum acceptable gross margin percentage (0–100).
- * Operations that would result in a margin below this threshold are halted.
- */
-const MINIMUM_MARGIN_PERCENT: number = 10;
-
-/**
- * Pre-operation trigger that checks product margin before certain POS
- * operations (e.g. price override, discount) are allowed to proceed.
- *
- * Register this trigger in your extension manifest under the
- * "triggers" section using the key "PreOperationTrigger".
+ * PreOperation trigger that intercepts operation 50001, computes the margin
+ * for the active (or first) cart line, navigates to MarginCalculationView and
+ * cancels the original operation so the blank-operation fallback never fires.
  */
 export default class MarginCalculationPreOperationTrigger extends Triggers.PreOperationTrigger {
 
     /**
-     * The set of POS operations this trigger is subscribed to.
-     * The trigger will be invoked before each of these operations executes.
+     * Called by the framework before every operation.
+     * No constructor — TypeScript auto-generates one that forwards all
+     * framework-provided arguments (including context) to the base class.
+     * @param options  IPreOperationOptions – contains `request.operationId`.
      */
-    public readonly supportedOperations: OperationType[] = [
-        OperationType.PriceOverride,
-        OperationType.DiscountPercent,
-        OperationType.LineDiscountPercent,
-        OperationType.TotalDiscountPercent
-    ];
+    public execute(options: Triggers.IPreOperationTriggerOptions): any {
+        const opId: number = (options && options.request && (options.request as any).operationId)
+            || 0;
 
-    /**
-     * Executes the margin validation logic before the operation runs.
-     *
-     * @param {Triggers.IPreOperationTriggerOptions} options - Context options for the
-     *        operation that is about to execute.
-     * @returns {Promise<Triggers.IHaltCondition>} A promise that resolves to an
-     *          IHaltCondition indicating whether the operation should proceed.
-     *          When `canceled` is true, the operation is halted.
-     */
-    public execute(options: Triggers.IPreOperationTriggerOptions): Promise<Triggers.IHaltCondition> {
-        if (ObjectExtensions.isNullOrUndefined(options)) {
-            return Promise.resolve<Triggers.IHaltCondition>({ canceled: false });
+        if (opId !== MARGIN_OPERATION_ID) {
+            return Promise.resolve({ halt: false });
         }
 
-        let haltCondition: Triggers.IHaltCondition;
+        const ctx: any = this.context;
 
-        try {
-            let marginIsAcceptable: boolean = this._validateMargin(options);
+        return new Promise((resolve: any): void => {
+            try {
+                // ------------------------------------------------------------------
+                // Step 1 — Get the current cart.
+                // ------------------------------------------------------------------
+                let cart: any = null;
 
-            if (!marginIsAcceptable) {
-                haltCondition = {
-                    canceled: true,
-                    reason: `Operation ${options.operationId} was halted: the resulting ` +
-                            `margin would fall below the minimum threshold of ${MINIMUM_MARGIN_PERCENT}%.`
+                if (ctx && ctx.cartAccessor && ctx.cartAccessor.cart) {
+                    cart = ctx.cartAccessor.cart;
+                }
+                if (!cart && typeof Commerce !== "undefined"
+                    && Commerce.Session && Commerce.Session.instance) {
+                    cart = Commerce.Session.instance.cart;
+                }
+
+                if (!cart || !cart.CartLines || cart.CartLines.length === 0) {
+                    alert("Margin Calculation: Please add a product to the transaction first.");
+                    resolve({ halt: true });
+                    return;
+                }
+
+                // ------------------------------------------------------------------
+                // Step 2 — Identify the active cart line.
+                // ------------------------------------------------------------------
+                const selectedId: string = cart.SelectedCartLineId || "";
+                const cartLine: any = (selectedId
+                    ? cart.CartLines.filter((l: any): boolean => l.LineId === selectedId)[0]
+                    : null) || cart.CartLines[0];
+
+                const itemId: string = cartLine.ItemId || "";
+                const quantity: number = cartLine.Quantity || 0;
+                const netAmount: number = cartLine.NetAmountWithAllInclusiveTax
+                    || cartLine.NetAmount || 0;
+
+                // ------------------------------------------------------------------
+                // Step 3 — Calculate margin (Phase 1: purchasePrice = 0 placeholder).
+                // ------------------------------------------------------------------
+                const purchasePrice: number = 0;
+                const totalCost: number = purchasePrice * Math.abs(quantity);
+                const marginAmount: number = netAmount - totalCost;
+                const marginPercentage: number = netAmount !== 0
+                    ? (marginAmount / netAmount) * 100
+                    : 0;
+
+                const marginResult: IMarginCalculationResult = {
+                    itemId, purchasePrice, quantity,
+                    netAmount, totalCost, marginAmount, marginPercentage
                 };
-            } else {
-                haltCondition = { canceled: false };
+
+                // ------------------------------------------------------------------
+                // Step 4 — Navigate to the Margin Calculation view.
+                // ------------------------------------------------------------------
+                if (ctx && ctx.navigator && typeof ctx.navigator.navigate === "function") {
+                    ctx.navigator.navigate("MarginCalculationView", marginResult);
+                } else if (typeof Commerce !== "undefined"
+                    && Commerce.Host && Commerce.Host.instance
+                    && typeof Commerce.Host.instance.navigateToView === "function") {
+                    Commerce.Host.instance.navigateToView("MarginCalculationView", marginResult);
+                } else {
+                    alert("Margin Calculation\n"
+                        + "Item:   " + itemId + "\n"
+                        + "Net:    " + netAmount.toFixed(2) + "\n"
+                        + "Margin: " + marginPercentage.toFixed(2) + " %");
+                }
+
+                resolve({ halt: true });
+
+            } catch (ex) {
+                console.error("[MarginCalcTrigger] execute error:", ex);
+                resolve({ halt: true });
             }
-        } catch (error) {
-            haltCondition = { canceled: false };
-        }
-
-        return Promise.resolve<Triggers.IHaltCondition>(haltCondition);
-    }
-
-    /**
-     * Validates that the proposed operation will not reduce the product margin
-     * below the configured minimum.
-     *
-     * @param {Triggers.IPreOperationTriggerOptions} options - Operation options providing
-     *        context about the price/discount change being requested.
-     * @returns {boolean} True if the resulting margin is acceptable; false if
-     *          the operation should be halted.
-     */
-    private _validateMargin(options: Triggers.IPreOperationTriggerOptions): boolean {
-        if (ObjectExtensions.isNullOrUndefined(options.operationOptions)) {
-            return true;
-        }
-
-        // Margin validation logic: check that after the operation the
-        // gross margin percentage stays at or above MINIMUM_MARGIN_PERCENT.
-        // Concrete margin data would be obtained via the Cart or Product APIs
-        // in a production implementation. This method returns true by default
-        // and should be extended with real cost/price data retrieval.
-        return true;
+        });
     }
 }

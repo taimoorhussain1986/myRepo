@@ -25,6 +25,7 @@
     },
     "include": [
         "TriggerHandlers/**/*.ts",
+        "Messages/**/*.ts",
         "Pos.Api.d.ts"
     ],
     "exclude": [

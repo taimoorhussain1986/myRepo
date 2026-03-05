@@ -81,6 +81,11 @@ declare module "PosApi/Extend/Triggers/OperationTriggers" {
         readonly operationOptions: ClientEntities.IOperationOptions;
         /** A correlation ID that can be used for logging or tracing. */
         readonly correlationId: string;
+        /**
+         * The request object carrying the operation ID in Store Commerce 9.55+.
+         * Access operationId via `options.request.operationId`.
+         */
+        readonly request?: { readonly operationId: number; [key: string]: any; };
     }
 
     /**
@@ -98,24 +103,36 @@ declare module "PosApi/Extend/Triggers/OperationTriggers" {
      * Interface that must be implemented by all pre-operation triggers.
      */
     export interface IPreOperationTrigger {
-        /** The list of operation IDs this trigger applies to. */
-        readonly supportedOperations: OperationType[];
+        /**
+         * The list of operation IDs this trigger applies to.
+         * When omitted the framework invokes the trigger for every operation;
+         * override in derived classes to restrict to specific operation IDs.
+         */
+        readonly supportedOperations?: OperationType[];
         /**
          * Executes the trigger logic before the POS operation runs.
          * @param options - Contextual options for the operation.
-         * @returns A promise that resolves to an IHaltCondition indicating
-         *          whether the operation should proceed or be canceled.
+         * @returns A promise (or any value) indicating whether the operation
+         *          should proceed or be canceled/halted.
          */
-        execute(options: IPreOperationTriggerOptions): Promise<IHaltCondition>;
+        execute(options: IPreOperationTriggerOptions): any;
     }
 
     /**
      * Abstract base class for pre-operation triggers.
      * Extend this class and implement `execute` to create a custom trigger.
+     * The framework injects `context` at runtime.
      */
-    export abstract class PreOperationTrigger implements IPreOperationTrigger {
-        abstract readonly supportedOperations: OperationType[];
-        abstract execute(options: IPreOperationTriggerOptions): Promise<IHaltCondition>;
+    export abstract class PreOperationTrigger {
+        /** Runtime context injected by the POS framework (navigator, cartAccessor, etc.). */
+        readonly context: any;
+        /**
+         * The list of operation IDs this trigger applies to.
+         * When not overridden the framework invokes this trigger for every operation;
+         * override in a subclass to restrict to specific operation IDs.
+         */
+        readonly supportedOperations: OperationType[];
+        abstract execute(options: IPreOperationTriggerOptions): any;
     }
 
     /**
